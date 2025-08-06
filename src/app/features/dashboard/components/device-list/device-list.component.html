@@ -1,0 +1,34 @@
+
+<div class="list-container">
+  <div class="list-header">
+    <h3>Connected Devices</h3>
+  </div>
+
+  <!-- Filter Input -->
+  <mat-form-field appearance="outline" class="filter-field">
+    <mat-label>Filter by Module Serial</mat-label>
+    <input matInput [formControl]="filterControl" placeholder="Search...">
+    <mat-icon matSuffix>search</mat-icon>
+  </mat-form-field>
+
+  <!-- Device List -->
+  <mat-nav-list class="device-list">
+    @for (client of filteredClients(); track client.clientId) {
+      <a mat-list-item 
+         (click)="selectDevice(client)" 
+         [class.active]="selectedDevice()?.clientId === client.clientId">
+        <mat-icon matListItemIcon>memory</mat-icon>
+        <div matListItemTitle>{{ client.moduleSerial }}</div>
+        <div matListItemLine>{{ client.ipAddress }}</div>
+      </a>
+    } @empty {
+      <div class="empty-state">
+         @if (clients().length === 0) {
+            <p>No devices connected.</p>
+         } @else {
+            <p>No devices match your filter.</p>
+         }
+      </div>
+    }
+  </mat-nav-list>
+</div>

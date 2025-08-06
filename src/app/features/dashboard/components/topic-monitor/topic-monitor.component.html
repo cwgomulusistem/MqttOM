@@ -1,0 +1,62 @@
+
+<mat-card class="monitor-card">
+  @if (selectedDevice(); as device) {
+    <div class="monitor-content">
+      <!-- Available Topics Section -->
+      <div class="topics-section">
+        <mat-card-title>Available Topics for {{ device.moduleSerial }}</mat-card-title>
+        <mat-card-subtitle>Click to subscribe and start monitoring messages.</mat-card-subtitle>
+        <mat-list>
+          @for (topic of availableTopics(); track topic) {
+            <mat-list-item>
+              <span matListItemTitle class="topic-name">{{ topic }}</span>
+              <button mat-flat-button 
+                      [color]="isSubscribed(topic) ? 'warn' : 'primary'"
+                      (click)="toggleSubscription(topic)">
+                <mat-icon>{{ isSubscribed(topic) ? 'notifications_off' : 'notifications_active' }}</mat-icon>
+                <span>{{ isSubscribed(topic) ? 'Unsubscribe' : 'Subscribe' }}</span>
+              </button>
+            </mat-list-item>
+          }
+        </mat-list>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <!-- Message Log Section -->
+      <div class="log-section">
+        <div class="log-header">
+          <mat-card-title>Message Log</mat-card-title>
+          <button mat-stroked-button color="warn" (click)="clearLogs()" [disabled]="messages().length === 0">
+            <mat-icon>delete_sweep</mat-icon>
+            <span>Clear Logs</span>
+          </button>
+        </div>
+        
+        <div class="log-display">
+          @for (msg of messages(); track msg.timestamp) {
+            <div class="log-entry">
+              <div class="log-meta">
+                <span class="log-topic">{{ msg.topic }}</span>
+                <span class="log-time">{{ msg.timestamp | date:'HH:mm:ss.SSS' }}</span>
+              </div>
+              <pre class="log-payload"><code>{{ msg.payload | prettyJson }}</code></pre>
+            </div>
+          } @empty {
+            <div class="empty-log">
+              <mat-icon>forum</mat-icon>
+              <p>No messages received yet.</p>
+              <p>Subscribe to a topic to start seeing messages.</p>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  } @else {
+    <div class="no-device-selected">
+      <mat-icon>touch_app</mat-icon>
+      <h2>Select a Device</h2>
+      <p>Choose a device from the list on the left to see its topics and monitor messages.</p>
+    </div>
+  }
+</mat-card>

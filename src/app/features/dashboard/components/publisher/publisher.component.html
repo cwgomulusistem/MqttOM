@@ -1,0 +1,57 @@
+
+<mat-card class="publisher-card">
+  <mat-card-header>
+    <mat-card-title>Message Publisher</mat-card-title>
+    <mat-card-subtitle>Publish a message to any topic</mat-card-subtitle>
+  </mat-card-header>
+  
+  <mat-card-content>
+    <form [formGroup]="publishForm" class="publish-form">
+      <!-- Topic Input -->
+      <mat-form-field appearance="outline">
+        <mat-label>Topic</mat-label>
+        <input matInput formControlName="topic" required>
+        @if (publishForm.get('topic')?.hasError('required')) {
+          <mat-error>Topic is required</mat-error>
+        }
+      </mat-form-field>
+
+      <!-- Payload Textarea -->
+      <mat-form-field appearance="outline">
+        <mat-label>Payload</mat-label>
+        <textarea matInput formControlName="payload" rows="5" placeholder='{ "command": "start" }'></textarea>
+        @if (isInvalidJson()) {
+          <mat-error>Invalid JSON format</mat-error>
+        }
+      </mat-form-field>
+
+      <!-- QoS and Retain Options -->
+      <div class="options-container">
+        <!-- QoS Select -->
+        <mat-form-field appearance="outline" class="qos-select">
+          <mat-label>QoS</mat-label>
+          <mat-select formControlName="qos">
+            <mat-option [value]="0">0 - At most once</mat-option>
+            <mat-option [value]="1">1 - At least once</mat-option>
+            <mat-option [value]="2">2 - Exactly once</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Retain Toggle -->
+        <mat-slide-toggle formControlName="retain" color="primary">
+          Retain Message
+        </mat-slide-toggle>
+      </div>
+    </form>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button mat-flat-button 
+            color="primary" 
+            (click)="publishMessage()" 
+            [disabled]="publishForm.invalid || isInvalidJson()">
+      <mat-icon>publish</mat-icon>
+      <span>Publish</span>
+    </button>
+  </mat-card-actions>
+</mat-card>

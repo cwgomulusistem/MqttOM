@@ -1,0 +1,83 @@
+
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: #f4f7f9;
+}
+
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.main-toolbar {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.status-icon {
+  font-size: 24px;
+  height: 24px;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.connected {
+    color: #4caf50; // Green
+  }
+  &.connecting {
+    color: #ffc107; // Amber
+  }
+  &.error, &.disconnected {
+    color: #f44336; // Red
+  }
+}
+
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+button[mat-stroked-button] {
+    border-color: rgba(255, 255, 255, 0.7);
+    color: white;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.content-column {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  overflow: hidden; /* Let the inner component handle scrolling */
+  display: flex;
+  flex-direction: column;
+}
+
+.device-list-col {
+  flex: 0 0 350px; /* Fixed width */
+}
+
+.topic-monitor-col {
+  flex: 2; /* Takes up the most space */
+}
+
+.publisher-col {
+  flex: 0 0 400px; /* Fixed width */
+}

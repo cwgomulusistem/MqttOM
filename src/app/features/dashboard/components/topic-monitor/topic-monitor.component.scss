@@ -1,0 +1,120 @@
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.monitor-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.monitor-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.topics-section {
+  padding: 1rem;
+}
+
+.topic-name {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+}
+
+mat-list-item button {
+  margin-left: auto;
+}
+
+.log-section {
+  padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.log-display {
+  flex: 1;
+  overflow-y: auto;
+  background-color: #2d2d2d;
+  color: #f1f1f1;
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+}
+
+.log-entry {
+  padding: 0.75rem;
+  border-bottom: 1px solid #444;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.log-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.log-topic {
+  font-weight: 600;
+  color: #82aaff; // A nice blue for topics
+}
+
+.log-time {
+  color: #78c2b0; // A teal for timestamps
+}
+
+.log-payload {
+  background-color: #333;
+  padding: 0.5rem;
+  border-radius: 4px;
+  white-space: pre-wrap; //
+  word-break: break-all;
+  margin: 0;
+  font-size: 0.85rem;
+  color: #c3e88d; // A light green for payload
+}
+
+.no-device-selected, .empty-log {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  text-align: center;
+  color: #757575;
+  padding: 2rem;
+
+  mat-icon {
+    font-size: 4rem;
+    width: 4rem;
+    height: 4rem;
+    margin-bottom: 1rem;
+  }
+
+  p {
+      margin: 0.5rem 0;
+  }
+}
+
+.empty-log {
+    background-color: transparent;
+    color: #9e9e9e;
+}
