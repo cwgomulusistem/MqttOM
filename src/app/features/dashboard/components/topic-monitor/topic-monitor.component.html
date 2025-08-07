@@ -1,87 +1,73 @@
-
-<mat-card class="monitor-card">
-  @if (selectedDevice(); as device) {
-    <div class="monitor-content">
-      <!-- Available Topics Section -->
-      <div class="topics-section">
-        <mat-card-title>Available Topics for {{ device.serialNo }}</mat-card-title>
-        <mat-card-subtitle>Click to subscribe and start monitoring messages.</mat-card-subtitle>
-
-        <!-- Topic Filter -->
-        <mat-form-field appearance="outline" class="topic-filter-field">
-          <mat-label>Filter Topics</mat-label>
-          <input matInput [formControl]="topicFilterControl" placeholder="Search by topic name...">
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
-
-        <!-- Topic Category Filter -->
-        <mat-form-field appearance="outline" class="topic-category-filter-field">
-          <mat-label>Topic Category</mat-label>
-          <mat-select [formControl]="topicCategoryFilterControl">
-            <mat-option value="all">All</mat-option>
-            <mat-option value="module-based">Module-based</mat-option>
-            <mat-option value="general">General</mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <mat-list>
-          @for (topic of filteredAvailableTopics(); track topic.name) {
-            <mat-list-item>
-              <span matListItemTitle class="topic-name">{{ topic.name }} (QoS: {{ topic.qos.qos }})</span>
-              <button mat-flat-button 
-                      [color]="isSubscribed(topic.name) ? 'warn' : 'primary'"
-                      (click)="toggleSubscription(topic.name, topic.qos.qos)">
-                <mat-icon>{{ isSubscribed(topic.name) ? 'notifications_off' : 'notifications_active' }}</mat-icon>
-                <span>{{ isSubscribed(topic.name) ? 'Unsubscribe' : 'Subscribe' }}</span>
-              </button>
-            </mat-list-item>
-          }
-        </mat-list>
-      </div>
-
-      <mat-divider></mat-divider>
-
-      <!-- Message Log Section -->
-      <div class="log-section">
-        <div class="log-header">
-          <mat-card-title>Message Log</mat-card-title>
-          <mat-form-field appearance="outline" class="message-filter-field">
-            <mat-label>Filter Messages</mat-label>
-            <input matInput [formControl]="messageFilterControl" placeholder="Filter by topic or payload...">
-            <mat-icon matSuffix>search</mat-icon>
-          </mat-form-field>
-          <button mat-stroked-button color="warn" (click)="clearLogs()" [disabled]="messages().length === 0">
-            <mat-icon>delete_sweep</mat-icon>
-            <span>Clear Logs</span>
-          </button>
-        </div>
-        
-        <div class="log-display">
-          @for (msg of filteredMessages(); track msg.timestamp) {
-            <div class="log-entry">
-              <div class="log-meta">
-                <span class="log-topic">{{ msg.topic }}</span>
-                <span class="log-time">{{ msg.timestamp | date:'HH:mm:ss.SSS' }}</span>
-              </div>
-              <pre class="log-payload"><code>{{ msg.payload | prettyJson }}</code></pre>
-            </div>
-          } @empty {
-            <div class="empty-log">
-              <mat-icon>forum</mat-icon>
-              <p>No messages received yet.</p>
-              <p>Subscribe to a topic to start seeing messages.</p>
-            </div>
-          }
-        </div>
-      </div>
+@if (selectedDevice(); as device) {
+<div class="monitor-container">
+  <!-- Sol Panel: Topic Listesi -->
+  <div class="topic-list-panel">
+    <div class="panel-header">
+      <mat-icon>list_alt</mat-icon>
+      <h3>Available Topics</h3>
     </div>
-  } @else {
-    <div class="no-device-selected">
+    <mat-list role="list">
+      @for (topic of device.topics; track topic.name) {
+      <mat-list-item
+        role="listitem"
+        (click)="selectTopic(topic)"
+        [class.selected]="selectedTopic()?.name === topic.name"
+        [matTooltip]="topic.description"
+        matTooltipPosition="right"
+      >
+        <div class="topic-info">
+          <span class="topic-name">{{ topic.name }}</span>
+          <mat-chip-set>
+            <mat-chip [ngClass]="'chip-' + topic.type">{{
+              topic.type
+            }}</mat-chip>
+          </mat-chip-set>
+        </div>
+      </mat-list-item>
+      }
+    </mat-list>
+  </div>
+
+  <!-- Sağ Panel: Mesaj Monitörü -->
+  <div class="message-monitor-panel">
+    @if (selectedTopic(); as topic) {
+    <div class="panel-header">
+      <mat-icon>monitor</mat-icon>
+      <h3>
+        Monitoring: <span>{{ topic.name }}</span>
+      </h3>
+    </div>
+    <div class="message-container" #messageContainer>
+      @for (msg of topicMessages(); track msg.timestamp) {
+      <div class="message-entry">
+        <span class="timestamp"
+          >{{ msg.timestamp | date : "HH:mm:ss.SSS" }}</span
+        >
+        <pre class="payload">{{ msg.payload | prettyJson }}</pre>
+      </div>
+      } @empty {
+      <div class="empty-state">
+        <mat-icon>hourglass_empty</mat-icon>
+        <p>Waiting for messages on this topic...</p>
+      </div>
+      }
+    </div>
+    } @else {
+    <div class="empty-state placeholder">
       <mat-icon>touch_app</mat-icon>
-      <h2>Select a Device</h2>
-      <p>Choose a device from the list on the left to see its topics and monitor messages.</p>
+      <h3>Select a Topic to Monitor</h3>
+      <p>
+        Choose a topic from the list on the left to see its live message
+        stream.
+      </p>
     </div>
-  }
-</mat-card>
-
-
+    }
+  </div>
+</div>
+} @else {
+<div class="empty-state-full-page">
+  <mat-icon>settings_input_component</mat-icon>
+  <h3>Device Not Selected</h3>
+  <p>Please select a connected device from the list to view its topics.</p>
+</div>
+}
