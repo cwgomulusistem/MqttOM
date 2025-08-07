@@ -22,34 +22,27 @@
       }
     </div>
     <span class="toolbar-spacer"></span>
+    <!-- Settings Button -->
+    <button mat-icon-button (click)="goToSettings()" matTooltip="Go to Topic Settings">
+      <mat-icon>settings</mat-icon>
+    </button>
+    <!-- Disconnect Button -->
     <button mat-stroked-button (click)="disconnect()">
       <mat-icon>exit_to_app</mat-icon>
       <span>Disconnect</span>
     </button>
   </mat-toolbar>
 
-  <!-- Main Content Area -->
+  <!-- Main Content Area: Vertical Layout -->
   <main class="main-content">
-    <!-- Left Panel: Device List and Topic Manager -->
-    <div class="left-panel">
-      <div class="device-list-container">
-        <app-device-list></app-device-list>
-      </div>
-      <div class="topic-manager-container">
-        <app-topic-manager></app-topic-manager>
-      </div>
+    <!-- Topic Monitor (Top) -->
+    <div class="monitor-wrapper">
+      <app-topic-monitor></app-topic-monitor>
     </div>
 
-    <!-- Right Panel: Combined Publisher and Monitor -->
-    <div class="right-panel">
-      <div class="right-panel-content">
-        <div class="publisher-container">
-          <app-publisher></app-publisher>
-        </div>
-        <div class="monitor-container">
-          <app-topic-monitor></app-topic-monitor>
-        </div>
-      </div>
+    <!-- Message Publisher (Bottom) -->
+    <div class="publisher-wrapper">
+      <app-publisher></app-p-publisher>
     </div>
   </main>
 </div>

@@ -4,42 +4,42 @@
 
 Bu proje, yüzlerce IoT cihazını gerçek zamanlı olarak izlememize, onlarla etkileşime geçmemize olanak tanıyan, ölçeklenebilir, bakımı kolay ve modern bir web uygulamasıdır. Uygulama, MQTT altyapısına bağlanarak cihaz verilerini görselleştirir ve yönetir.
 
-## Uygulanan Tasarım ve Özellikler
-
-*   **Mimari:** %100 Standalone bileşenler, servis tabanlı mimari, reaktif durum yönetimi (RxJS & Sinyaller).
-*   **Teknoloji:** Angular v20+, Angular Material, MQTT.js, RxJS.
-*   **Tasarım:** Modern, mobil uyumlu ve kullanıcı dostu arayüz. Çok katmanlı gölgeler, canlı renk paleti, etkileşimli bileşenler.
-*   **Erişilebilirlik (A11Y):** Tüm kullanıcı grupları için erişilebilirlik standartlarına uygunluk.
-*   **Çekirdek Servisler:** `MqttService` ve `DeviceStateService` oluşturuldu.
-
 ---
 
-## **Güncel Plan: Gelişmiş Topic Yönetimi ve Arayüz İyileştirmeleri**
+## **Güncel Plan: Gelişmiş Topic Yönetim Sayfası ve Dinamik Dashboard**
 
-**Amaç:** Uygulamaya esnek bir topic yönetim sistemi eklemek, RPC dahil tüm topic'leri dinleyebilmek ve arayüzü daha kullanışlı hale getirmek. Kullanıcılar artık istedikleri topic'leri (örn. `#` veya `MQTTnet.RPC/+/+`) manuel olarak ekleyip kaldırabilecekler.
+**Amaç:** Kullanıcıların dinamik olarak topic şablonları (`{tenant}`, `{serialNo}` gibi değişkenlerle) oluşturup kaydedebileceği özel bir ayarlar sayfası eklemek. Bu ayarlar, uygulama kapatılıp açıldığında dahi korunacak. Dashboard, bu yeni esnek yapıya hizmet edecek şekilde tamamen yeniden düzenlenecektir.
 
 **Adımlar:**
 
-1.  **Arayüzün Yeniden Düzenlenmesi:**
-    *   `DashboardComponent`'te **Publisher** ve **Topic Monitor** bileşenleri yan yana, yatay bir düzende konumlandırılacak. Bu, özellikle geniş ekranlarda daha iyi bir genel bakış sağlayacak.
-2.  **Topic Yönetim Arayüzünün Oluşturulması:**
-    *   `TopicManagerComponent` adında yeni bir bileşen oluşturulacak. Bu bileşen, kullanıcıların abone olunacak topic'leri ekleyip silebileceği bir form içerecek.
-3.  **Merkezi Topic Yönetim Servisinin Geliştirilmesi:**
-    *   `DeviceStateService`, artık sadece cihaz durumunu değil, aynı zamanda kullanıcı tarafından eklenen özel topic listesini de yönetecek. Varsayılan olarak bu liste `['#']` topic'ini içerecek.
-4.  **MQTT Servisinin Dinamik Abonelik Yeteneği Kazanması:**
-    *   `MqttService`, başlangıçta `DeviceStateService`'teki varsayılan topic'lere abone olacak ve bu listede yapılan her değişikliği (yeni topic ekleme/çıkarma) anında MQTT broker'ına yansıtacak.
-5.  **Bileşenlerin Entegrasyonu:**
-    *   Yeni `TopicManagerComponent`, `DashboardComponent`'e entegre edilecek ve tüm sistemin uyumlu bir şekilde çalışması sağlanacak.
+1.  **Dashboard Arayüzünün Yeniden Tasarlanması:**
+    *   `DashboardComponent`'in yerleşimi değiştirilecek: Üstte tam genişlikte `TopicMonitorComponent`, altta ise `MessagePublisherComponent` yer alacak. `DeviceListComponent` bu ekrandan kaldırılacak.
+2.  **Kalıcı Ayarlar Servisi (`DeviceStateService`):**
+    *   `DeviceStateService`, artık topic listesini Electron aracılığıyla bir yapılandırma dosyasına kaydedip okuyacak.
+    *   Uygulama başladığında, kaydedilmiş topic listesini otomatik olarak yükleyecek.
+3.  **Yeni Rota ve Ayarlar Sayfası (`/settings`):**
+    *   `/settings` rotası ve bu rotaya bağlı, kullanıcıların topic şablonlarını yönetebileceği `SettingsComponent` oluşturulacak.
+    *   Ana arayüze, bu yeni sayfaya yönlendiren kalıcı bir "Ayarlar" butonu eklenecek.
+4.  **Topic Şablon Yönetimi:**
+    *   `SettingsComponent`, kullanıcıların `{tenant}` ve `{serialNo}` gibi yer tutucular kullanarak topic kalıpları eklemesine, görmesine ve silmesine olanak tanıyacak bir arayüz sunacak.
+    *   `DeviceStateService`, seçili olan cihaza göre bu şablonları gerçek topic'lere dönüştürecek ve `MqttService` bu topic'lere abone olacak.
 
 ---
 
 ## **Tamamlanan Planlar**
 
-### Faz 1-5 & Kodun Yeniden Yapılandırılması
+### Gelişmiş Topic Yönetimi (Faz 1)
 
-*   Proje iskeleti kuruldu, çekirdek servisler oluşturuldu, login ve dashboard bileşenleri geliştirildi.
-*   `DeviceListComponent`, servis tabanlı ve sinyal odaklı çalışacak şekilde tamamen yeniden yapılandırıldı. Arayüzü iki panelli (cihaz listesi ve topic detayları) modern bir yapıya kavuşturuldu.
-*   `TopicMonitorComponent`'in `DeviceListComponent`'teki değişikliklerle uyumlu hale getirilmesi sağlandı.
-*   Tüm derleme hataları giderilerek projenin kararlı bir duruma getirilmesi sağlandı.
+*   **Arayüz İyileştirmeleri:** `Publisher` ve `Monitor` bileşenleri daha kompakt ve modern bir tasarıma kavuşturuldu.
+*   **Dinamik Topic Yönetimi:** Kullanıcıların anlık olarak özel topic'ler (`#` dahil) ekleyip çıkarmasına olanak tanıyan bir `TopicManagerComponent` ve `DeviceStateService` entegrasyonu yapıldı.
+*   **Dinamik MQTT Abonelikleri:** `MqttService`, `DeviceStateService`'teki topic listesindeki değişiklikleri otomatik olarak algılayıp abonelikleri güncelleyecek yeteneğe kavuşturuldu.
+*   **Hata Giderme:** `DeviceStateService`'in `BehaviorSubject`'ten sinyale geçişiyle ilgili tüm derleme hataları düzeltildi.
+
+### Proje Başlangıcı ve Çekirdek Yapı (Faz 0)
+
+*   Proje iskeleti kuruldu, çekirdek servisler (`MqttService`, `DeviceStateService`, `AuthService` vb.) oluşturuldu.
+*   Login ve Dashboard bileşenleri geliştirildi, temel arayüz ve yönlendirme yapısı kuruldu.
+*   `DeviceListComponent` ve `TopicMonitorComponent`'in ilk versiyonları oluşturuldu.
+*   Proje, standalone bileşenler ve sinyal tabanlı durum yönetimi gibi modern Angular prensiplerine uygun olarak yapılandırıldı.
 
 ---
