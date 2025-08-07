@@ -50,9 +50,8 @@ export class TopicMonitorComponent {
   private readonly deviceStateService = inject(DeviceStateService);
   private readonly mqttService = inject(MqttService);
 
-  public readonly selectedDevice = toSignal(
-    this.deviceStateService.selectedDevice$
-  );
+  // Directly use the signal from the service
+  public readonly selectedDevice = this.deviceStateService.selectedDevice;
   public readonly selectedTopic = signal<MqttTopic | null>(null);
 
   @ViewChild('messageContainer') private messageContainer!: ElementRef;
@@ -62,7 +61,14 @@ export class TopicMonitorComponent {
     this.mqttService.messageStream$.pipe(
       map(msg => ({ ...msg, timestamp: Date.now() })), // Add timestamp
       scan(
-        (acc: MonitoredMessage[], value: MonitoredMessage) => [...acc, value],
+        (acc: MonitoredMessage[], value: MonitoredMessage) => {
+          // Keep the list from growing indefinitely, cap at 200 messages
+          const newAcc = [...acc, value];
+          if (newAcc.length > 200) {
+            return newAcc.slice(newAcc.length - 200);
+          }
+          return newAcc;
+        },
         []
       )
     ),
@@ -71,32 +77,28 @@ export class TopicMonitorComponent {
 
   /**
    * Filters messages for the selected topic.
+   * If no topic is selected, it shows all messages.
    */
   public readonly topicMessages = computed(() => {
     const messages = this.allMessages();
     const topic = this.selectedTopic();
     if (!topic) {
-      return [];
+      // If no topic is selected, show all messages.
+      return messages;
     }
-    return messages.filter(msg => msg.topic === topic.name);
+    return messages.filter(msg => this.mqttService.topicMatches(topic.name, msg.topic));
+  });
+
+  public readonly deviceTopics = computed(() => {
+    const device = this.selectedDevice();
+    return device && device.topics ? device.topics : [];
   });
 
   constructor() {
     // Reset topic selection when device changes
     effect(() => {
-      this.selectedDevice();
+      this.selectedDevice(); // React to device changes
       this.selectedTopic.set(null);
-    });
-
-    // Manage MQTT subscriptions based on the selected topic
-    effect(onCleanup => {
-      const topic = this.selectedTopic();
-      if (topic) {
-        this.mqttService.subscribeToTopic(topic.name);
-        onCleanup(() => {
-          this.mqttService.unsubscribeFromTopic(topic.name);
-        });
-      }
     });
 
     // Scroll to the bottom when new messages arrive
@@ -107,7 +109,7 @@ export class TopicMonitorComponent {
     });
   }
 
-  public selectTopic(topic: MqttTopic): void {
+  public selectTopic(topic: MqttTopic | null): void {
     this.selectedTopic.set(topic);
   }
 
@@ -119,9 +121,4 @@ export class TopicMonitorComponent {
       }, 50);
     } catch (err) {}
   }
-
-  // Not needed when tracking by property in the template
-  // public trackByTopic(index: number, topic: MqttTopic): string {
-  //   return topic.name;
-  // }
 }

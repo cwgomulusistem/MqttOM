@@ -15,6 +15,7 @@ import { MqttService } from '../../core/services/mqtt.service';
 import { DeviceListComponent } from './components/device-list/device-list.component';
 import { TopicMonitorComponent } from './components/topic-monitor/topic-monitor.component';
 import { PublisherComponent } from './components/publisher/publisher.component';
+import { TopicManagerComponent } from './components/topic-manager/topic-manager.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -29,7 +30,8 @@ import { PublisherComponent } from './components/publisher/publisher.component';
     MatSidenavModule,
     DeviceListComponent,
     TopicMonitorComponent,
-    PublisherComponent, // Import the final component
+    PublisherComponent,
+    TopicManagerComponent, // Import the new component
   ],
 })
 export class DashboardComponent {

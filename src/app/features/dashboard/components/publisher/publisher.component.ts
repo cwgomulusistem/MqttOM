@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
 
 // Angular Material Modules
 import { MatCardModule } from '@angular/material/card';
@@ -17,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MqttService } from '../../../../core/services/mqtt.service';
 import { DeviceStateService } from '../../../../core/services/device-state.service';
 import { MqttTopic } from '../../../../core/services/mqtt-topic.service';
+import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 
 @Component({
   selector: 'app-publisher',
@@ -32,6 +32,7 @@ import { MqttTopic } from '../../../../core/services/mqtt-topic.service';
     MatButtonModule,
     MatSnackBarModule,
     MatIconModule,
+    CdkTextareaAutosize,
   ],
   templateUrl: './publisher.component.html',
   styleUrls: ['./publisher.component.scss'],
@@ -43,11 +44,13 @@ export class PublisherComponent {
   private deviceStateService = inject(DeviceStateService);
   private snackBar = inject(MatSnackBar);
 
-  public selectedDevice = toSignal(this.deviceStateService.selectedDevice$);
+  public selectedDevice = this.deviceStateService.selectedDevice;
   
   // Compute available topics from the selected device
   public availableTopics = computed<MqttTopic[]>(() => {
-    return this.selectedDevice()?.topics ?? [];
+    const device = this.selectedDevice();
+    // Ensure device and device.topics exist before trying to access them
+    return device && device.topics ? device.topics : [];
   });
 
   public publishForm = this.fb.group({
@@ -64,7 +67,8 @@ export class PublisherComponent {
     // Effect to enable/disable the form based on device selection
     effect(() => {
       const device = this.selectedDevice();
-      if (device && device.topics.length > 0) {
+      // Ensure device and device.topics exist and has items
+      if (device && device.topics && device.topics.length > 0) {
         this.publishForm.enable();
         // Reset topic selection when a new device is chosen
         this.publishForm.get('topic')?.setValue(''); 

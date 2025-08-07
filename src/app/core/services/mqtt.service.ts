@@ -1,7 +1,7 @@
-
-import { Injectable, NgZone, inject } from '@angular/core';
+import { Injectable, NgZone, inject, effect } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Subject } from 'rxjs';
+import { DeviceStateService } from './device-state.service';
 
 declare global {
   interface Window {
@@ -31,15 +31,34 @@ export type MqttConnectionState = 'Disconnected' | 'Connecting' | 'Connected' | 
 export class MqttService {
   private zone = inject(NgZone);
   private router = inject(Router);
+  private deviceStateService = inject(DeviceStateService);
 
   public connectionState$ = new BehaviorSubject<MqttConnectionState>('Disconnected');
   public messageStream$ = new Subject<{ topic: string; payload: string }>();
-  public connectedClients$ = new BehaviorSubject<any[]>([]);
 
   private cleanupFunctions: (() => void)[] = [];
+  private lastSubscribedTopics: string[] = [];
 
   constructor() {
     this.setupElectronListeners();
+
+    // Effect to dynamically manage MQTT subscriptions
+    effect(() => {
+      if (this.connectionState$.value !== 'Connected') {
+        return; // Only manage subscriptions when connected
+      }
+
+      const newTopics = this.deviceStateService.customTopics();
+      const oldTopics = this.lastSubscribedTopics;
+
+      const topicsToUnsubscribe = oldTopics.filter(t => !newTopics.includes(t));
+      const topicsToSubscribe = newTopics.filter(t => !oldTopics.includes(t));
+
+      topicsToUnsubscribe.forEach(topic => this.unsubscribeFromTopic(topic));
+      topicsToSubscribe.forEach(topic => this.subscribeToTopic(topic));
+
+      this.lastSubscribedTopics = newTopics;
+    });
   }
 
   private setupElectronListeners() {
@@ -48,7 +67,11 @@ export class MqttService {
         if (status === 'connected') {
           this.connectionState$.next('Connected');
           this.router.navigate(['/dashboard']);
-          this.connectedClients$.next([]);
+          // On connection, subscribe to all current custom topics
+          this.lastSubscribedTopics = []; // Reset before subscribing
+          const topicsToSubscribe = this.deviceStateService.customTopics();
+          topicsToSubscribe.forEach(topic => this.subscribeToTopic(topic));
+          this.lastSubscribedTopics = topicsToSubscribe;
         } else if (status === 'disconnected') {
           this.connectionState$.next('Disconnected');
         } else if (status === 'error') {
@@ -83,11 +106,10 @@ export class MqttService {
   disconnect(): void {
     window.electronAPI.send('mqtt-disconnect');
     this.connectionState$.next('Disconnected');
-    this.connectedClients$.next([]);
   }
 
   subscribeToTopic(topic: string, options?: { qos: number }): void {
-    const subscribeOptions = options || { qos: 2 }; // Varsayılan QoS seviyesi 2 olarak ayarlandı
+    const subscribeOptions = options || { qos: 2 };
     window.electronAPI.send('mqtt-subscribe', { topic, options: subscribeOptions });
   }
 
@@ -97,6 +119,50 @@ export class MqttService {
 
   publish(topic: string, message: string, options: any): void {
     window.electronAPI.send('mqtt-publish', { topic, message, options });
+  }
+
+  /**
+   * Checks if a topic matches a subscription pattern with wildcards.
+   * @param pattern The subscription pattern (e.g., 'devices/+/status', 'devices/#').
+   * @param topic The topic from the message (e.g., 'devices/123/status').
+   * @returns True if the topic matches the pattern.
+   */
+  public topicMatches(pattern: string, topic: string): boolean {
+    if (pattern === topic) {
+        return true;
+    }
+    if (pattern === '#') {
+        return true;
+    }
+
+    const patternSegments = pattern.split('/');
+    const topicSegments = topic.split('/');
+
+    const patternLength = patternSegments.length;
+    const topicLength = topicSegments.length;
+
+    if (patternSegments[patternLength - 1] === '#') {
+        if (topicLength < patternLength - 1) {
+            return false;
+        }
+        for (let i = 0; i < patternLength - 1; i++) {
+            if (patternSegments[i] !== '+' && patternSegments[i] !== topicSegments[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    if (patternLength !== topicLength) {
+        return false;
+    }
+
+    for (let i = 0; i < patternLength; i++) {
+        if (patternSegments[i] !== '+' && patternSegments[i] !== topicSegments[i]) {
+            return false;
+        }
+    }
+    return true;
   }
 
   ngOnDestroy() {

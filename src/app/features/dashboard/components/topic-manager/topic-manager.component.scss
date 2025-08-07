@@ -1,0 +1,42 @@
+:host {
+  display: block;
+  padding: 1rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.topic-manager-container h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.topic-input {
+  flex-grow: 1;
+}
+
+.topic-item {
+  margin-bottom: 0.5rem;
+  border-left: 3px solid #673ab7;
+  padding-left: 1rem;
+  height: auto !important;
+  min-height: 48px;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.empty-message {
+  text-align: center;
+  color: #777;
+  padding: 1rem;
+}

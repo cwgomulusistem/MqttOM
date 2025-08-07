@@ -1,69 +1,66 @@
-<mat-card>
-  <mat-card-header>
-    <mat-icon mat-card-avatar>publish</mat-icon>
-    <mat-card-title>Message Publisher</mat-card-title>
-    <mat-card-subtitle>Publish a message to any topic</mat-card-subtitle>
-  </mat-card-header>
-  <mat-card-content>
-    <form [formGroup]="publishForm" class="publish-form">
-      <fieldset [disabled]="publishForm.disabled" class="form-fieldset">
-        <!-- Topic Selection -->
-        <mat-form-field appearance="outline">
-          <mat-label>Topic</mat-label>
-          <mat-select formControlName="topic">
-            @for (topic of availableTopics(); track topic.name) {
-            <mat-option [value]="topic.name">
-              {{ topic.name }}
-            </mat-option>
-            }
-          </mat-select>
-          @if (!selectedDevice()) {
-          <mat-hint>Select a device to see available topics.</mat-hint>
-          }
-        </mat-form-field>
+<div class="publisher-wrapper">
+  <div class="header">
+    <mat-icon class="header-icon">publish</mat-icon>
+    <div class="header-text">
+      <h3 class="title">Message Publisher</h3>
+      <p class="subtitle">Publish a message to any topic</p>
+    </div>
+  </div>
 
-        <!-- Payload Text Area -->
-        <mat-form-field appearance="outline">
-          <mat-label>Payload</mat-label>
-          <textarea
-            matInput
-            formControlName="payload"
-            cdkTextareaAutosize
-            #autosize="cdkTextareaAutosize"
-            cdkAutosizeMinRows="3"
-            cdkAutosizeMaxRows="8"
-          ></textarea>
-          @if (isInvalidJson()) {
-          <mat-error>Payload must be a valid JSON.</mat-error>
+  <form [formGroup]="publishForm" class="publish-form">
+    <div class="form-row">
+      <!-- Topic & QoS Side-by-Side -->
+      <mat-form-field appearance="outline" class="topic-field">
+        <mat-label>Topic</mat-label>
+        <mat-select formControlName="topic">
+          @for (topic of availableTopics(); track topic.name) {
+          <mat-option [value]="topic.name">{{ topic.name }}</mat-option>
           }
-        </mat-form-field>
+        </mat-select>
+        @if (!selectedDevice()) {
+        <mat-hint>Select a device first</mat-hint>
+        }
+      </mat-form-field>
 
-        <!-- QoS and Retain Options -->
-        <div class="options-container">
-          <mat-form-field appearance="outline" class="qos-select">
-            <mat-label>QoS</mat-label>
-            <mat-select formControlName="qos">
-              <mat-option [value]="0">0 - At most once</mat-option>
-              <mat-option [value]="1">1 - At least once</mat-option>
-              <mat-option [value]="2">2 - Exactly once</mat-option>
-            </mat-select>
-          </mat-form-field>
-          <mat-slide-toggle formControlName="retain" color="primary"
-            >Retain Message</mat-slide-toggle
-          >
-        </div>
-      </fieldset>
-    </form>
-  </mat-card-content>
-  <mat-card-actions>
-    <button
-      mat-flat-button
-      color="primary"
-      (click)="publishMessage()"
-      [disabled]="publishForm.invalid || isInvalidJson()"
-    >
-      <mat-icon>send</mat-icon>
-      <span>Publish</span>
-    </button>
-  </mat-card-actions>
-</mat-card>
+      <mat-form-field appearance="outline" class="qos-field">
+        <mat-label>QoS</mat-label>
+        <mat-select formControlName="qos">
+          <mat-option [value]="0">0</mat-option>
+          <mat-option [value]="1">1</mat-option>
+          <mat-option [value]="2">2</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <!-- Payload Text Area -->
+    <mat-form-field appearance="outline" class="payload-field">
+      <mat-label>Payload</mat-label>
+      <textarea
+        matInput
+        formControlName="payload"
+        cdkTextareaAutosize
+        cdkAutosizeMinRows="3"
+        cdkAutosizeMaxRows="6"
+      ></textarea>
+      @if (isInvalidJson()) {
+      <mat-error>Payload must be a valid JSON.</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="actions-row">
+        <mat-slide-toggle formControlName="retain" color="primary">
+            Retain
+        </mat-slide-toggle>
+        <button
+            mat-flat-button
+            color="primary"
+            class="publish-button"
+            (click)="publishMessage()"
+            [disabled]="publishForm.invalid || isInvalidJson()"
+        >
+            <mat-icon>send</mat-icon>
+            <span>Publish</span>
+        </button>
+    </div>
+  </form>
+</div>

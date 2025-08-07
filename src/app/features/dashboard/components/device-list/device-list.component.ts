@@ -4,7 +4,6 @@ import {
   computed,
   inject,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { MatListModule } from '@angular/material/list';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -47,7 +46,7 @@ export class DeviceListComponent {
   private readonly authService = inject(AuthService);
 
   public readonly allDevices = this.deviceDataService.deviceData;
-  public readonly selectedDevice = toSignal(this.deviceStateService.selectedDevice$, { initialValue: null });
+  public readonly selectedDevice = this.deviceStateService.selectedDevice;
   private readonly tenant = this.authService.tenant;
 
   public readonly deviceFilterControl = new FormControl('');
@@ -80,7 +79,7 @@ export class DeviceListComponent {
   });
 
   public selectDevice(device: DisplayDevice): void {
-    this.deviceStateService.selectedDevice$.next(device);
+    this.deviceStateService.selectedDevice.set(device);
   }
 
   private createDisplayDevice(device: DeviceData, tenant: string): DisplayDevice {

@@ -1,73 +1,76 @@
-@if (selectedDevice(); as device) {
-<div class="monitor-container">
-  <!-- Sol Panel: Topic Listesi -->
-  <div class="topic-list-panel">
-    <div class="panel-header">
+<div class="monitor-layout">
+  <!-- Available Topics List -->
+  <div class="topics-sidebar">
+    <div class="sidebar-header">
       <mat-icon>list_alt</mat-icon>
-      <h3>Available Topics</h3>
+      <h5>Available Topics</h5>
     </div>
-    <mat-list role="list">
-      @for (topic of device.topics; track topic.name) {
+    <mat-list>
+      <!-- All Topics Option -->
       <mat-list-item
-        role="listitem"
-        (click)="selectTopic(topic)"
-        [class.selected]="selectedTopic()?.name === topic.name"
-        [matTooltip]="topic.description"
-        matTooltipPosition="right"
+        (click)="selectTopic(null)"
+        [class.selected]="selectedTopic() === null"
+        matTooltip="Show messages from all subscribed topics"
       >
-        <div class="topic-info">
-          <span class="topic-name">{{ topic.name }}</span>
-          <mat-chip-set>
-            <mat-chip [ngClass]="'chip-' + topic.type">{{
-              topic.type
-            }}</mat-chip>
-          </mat-chip-set>
-        </div>
+        <mat-icon matListItemAvatar>hub</mat-icon>
+        <div matListItemLine>All Subscribed Topics</div>
       </mat-list-item>
+
+      <!-- Topics from Selected Device -->
+      @if (selectedDevice(); as device) {
+        @for (topic of deviceTopics(); track topic.name) {
+          <mat-list-item
+            (click)="selectTopic(topic)"
+            [class.selected]="selectedTopic()?.name === topic.name"
+            [matTooltip]="topic.description"
+            [matTooltipPosition]="'above'"
+          >
+            <mat-icon matListItemAvatar [ngClass]="topic.type === 'rpc' ? 'rpc-icon' : 'event-icon'">
+              {{ topic.type === 'rpc' ? 'settings_ethernet' : 'dvr' }}
+            </mat-icon>
+            <div matListItemLine class="topic-name">{{ topic.name }}</div>
+            <div matListItemMeta>
+              <mat-chip-option [selected]="true" [color]="topic.type === 'rpc' ? 'accent' : 'primary'">
+                {{ topic.type }}
+              </mat-chip-option>
+            </div>
+          </mat-list-item>
+        }
+      } @else {
+        <div class="no-device-placeholder">
+          <mat-icon>phonelink_off</mat-icon>
+          <p>Select a device to see its specific topics.</p>
+        </div>
       }
     </mat-list>
   </div>
 
-  <!-- Sağ Panel: Mesaj Monitörü -->
-  <div class="message-monitor-panel">
-    @if (selectedTopic(); as topic) {
-    <div class="panel-header">
-      <mat-icon>monitor</mat-icon>
-      <h3>
-        Monitoring: <span>{{ topic.name }}</span>
-      </h3>
-    </div>
-    <div class="message-container" #messageContainer>
-      @for (msg of topicMessages(); track msg.timestamp) {
-      <div class="message-entry">
-        <span class="timestamp"
-          >{{ msg.timestamp | date : "HH:mm:ss.SSS" }}</span
-        >
-        <pre class="payload">{{ msg.payload | prettyJson }}</pre>
-      </div>
-      } @empty {
-      <div class="empty-state">
-        <mat-icon>hourglass_empty</mat-icon>
-        <p>Waiting for messages on this topic...</p>
-      </div>
+  <!-- Message Display Area -->
+  <div class="message-area">
+    <div #messageContainer class="message-container">
+      @if (topicMessages().length > 0) {
+        @for (msg of topicMessages(); track msg.timestamp + msg.topic) {
+          <div class="message-entry">
+            <div class="message-header">
+              <span class="topic-name">{{ msg.topic }}</span>
+              <span class="timestamp">{{ msg.timestamp | date:'HH:mm:ss.SSS' }}</span>
+            </div>
+            <pre class="payload">{{ msg.payload | prettyJson }}</pre>
+          </div>
+        }
+      } @else {
+        <div class="empty-state">
+          @if (selectedTopic()) {
+            <mat-icon>hourglass_empty</mat-icon>
+            <h3>Waiting for messages...</h3>
+            <p>No messages received on <strong>{{ selectedTopic()?.name }}</strong> yet.</p>
+          } @else {
+            <mat-icon>visibility</mat-icon>
+            <h3>Select a Topic to Monitor</h3>
+            <p>Choose a topic from the list on the left to see its live message stream.</p>
+          }
+        </div>
       }
     </div>
-    } @else {
-    <div class="empty-state placeholder">
-      <mat-icon>touch_app</mat-icon>
-      <h3>Select a Topic to Monitor</h3>
-      <p>
-        Choose a topic from the list on the left to see its live message
-        stream.
-      </p>
-    </div>
-    }
   </div>
 </div>
-} @else {
-<div class="empty-state-full-page">
-  <mat-icon>settings_input_component</mat-icon>
-  <h3>Device Not Selected</h3>
-  <p>Please select a connected device from the list to view its topics.</p>
-</div>
-}
