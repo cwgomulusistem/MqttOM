@@ -1,15 +1,28 @@
 
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { BehaviorSubject, Subject } from 'rxjs';
-import mqtt, { MqttClient, IClientPublishOptions } from 'mqtt'; // Use default import
 
-// Define a type for the MQTT configuration for clarity
+// Electron API'sini pencere nesnesinde tanımla
+// Bu, preload.js'de tanımlanan API ile eşleşmelidir
+declare global {
+  interface Window {
+    electronAPI: {
+      send: (channel: string, data?: any) => void;
+      invoke: (channel: string, data?: any) => Promise<any>;
+      on: (channel: string, func: (...args: any[]) => void) => () => void;
+      loadCredentials: () => Promise<any>; // Yeni eklendi
+      saveCredentials: (credentials: any) => void; // Yeni eklendi
+    };
+  }
+}
+
 export interface MqttConfig {
-  hostname: string;
+  host: string; // Electron tarafı `host` bekliyor
   port: number;
   username?: string;
   password?: string;
-  protocol?: 'ws' | 'wss';
+  protocol?: 'ws' | 'wss' | 'mqtt' | 'mqtts';
 }
 
 export type MqttConnectionState = 'Disconnected' | 'Connecting' | 'Connected' | 'Error';
@@ -18,104 +31,85 @@ export type MqttConnectionState = 'Disconnected' | 'Connecting' | 'Connected' | 
   providedIn: 'root',
 })
 export class MqttService {
-  private client?: MqttClient;
+  private zone = inject(NgZone);
+  private router = inject(Router);
 
   public connectionState$ = new BehaviorSubject<MqttConnectionState>('Disconnected');
   public messageStream$ = new Subject<{ topic: string; payload: string }>();
   public connectedClients$ = new BehaviorSubject<any[]>([]);
 
-  constructor() {}
+  private cleanupFunctions: (() => void)[] = [];
 
-  connect(config: MqttConfig): void {
-    if (this.client) {
-      this.client.end();
-    }
+  constructor() {
+    this.setupElectronListeners();
+  }
+
+  private setupElectronListeners() {
+    // MQTT durum güncellemelerini dinle
+    const cleanupStatus = window.electronAPI.on('mqtt-status', ({ status, error }) => {
+      console.log(`[MqttService] Electron'dan durum alındı: ${status}`);
+      this.zone.run(() => {
+        if (status === 'connected') {
+          console.log('[MqttService] Durum: Connected. Yönlendirme denenecek...');
+          this.connectionState$.next('Connected');
+          this.router.navigate(['/dashboard']);
+          console.log('[MqttService] /dashboard adresine yönlendirildi.');
+          // Simüle edilmiş istemci listesi kaldırıldı.
+          this.connectedClients$.next([]); // Listeyi boşalt
+        } else if (status === 'disconnected') {
+          this.connectionState$.next('Disconnected');
+          // this.router.navigate(['/login']); // Geçici olarak devre dışı bırakıldı
+        } else if (status === 'error') {
+          console.error('MQTT Error from main process:', error);
+          this.connectionState$.next('Error');
+        }
+      });
+    });
+
+    // Gelen MQTT mesajlarını dinle
+    const cleanupMessage = window.electronAPI.on('mqtt-message', ({ topic, message }) => {
+      this.zone.run(() => {
+        this.messageStream$.next({ topic, payload: message });
+      });
+    });
+
+    this.cleanupFunctions.push(cleanupStatus, cleanupMessage);
+  }
+
+  async connect(config: MqttConfig): Promise<void> {
     this.connectionState$.next('Connecting');
-
-    const protocol = config.protocol || 'ws';
-    const brokerUrl = `${protocol}://${config.hostname}:${config.port}/mqtt`;
-
     try {
-      this.client = mqtt.connect(brokerUrl, {
-        username: config.username,
-        password: config.password,
-        reconnectPeriod: 1000,
-      });
-
-      this.client.on('connect', () => {
-        this.connectionState$.next('Connected');
-        const fakeClients = [
-          { clientId: 'TenantA@SN-12345@1.2.3@2.0.0@192.168.1.10' },
-          { clientId: 'TenantA@SN-ABCDE@1.2.4@2.0.1@192.168.1.12' },
-          { clientId: 'TenantB@SN-FGHIJ@2.0.0@2.1.0@192.168.2.25' },
-          { clientId: 'TenantC@SN-KLMNO@3.1.0@3.0.0@10.0.0.5' },
-          { clientId: 'TenantA@SN-PQRST@1.2.3@2.0.0@192.168.1.18' },
-        ];
-        this.connectedClients$.next(fakeClients);
-      });
-
-      this.client.on('message', (topic, payload) => {
-        this.messageStream$.next({ topic, payload: payload.toString() });
-      });
-
-      this.client.on('error', (err) => {
-        console.error('MQTT Error:', err);
-        this.connectionState$.next('Error');
-        this.client?.end();
-      });
-
-      this.client.on('close', () => {
-         if (this.connectionState$.value !== 'Disconnected') {
-            // this.connectionState$.next('Error');
-         }
-      });
-
+      const result = await window.electronAPI.invoke('mqtt-connect', config);
+      if (!result.success) {
+        throw new Error(result.error);
+      }
     } catch (error) {
-      console.error('Failed to create MQTT client:', error);
+      console.error('Failed to connect via Electron:', error);
       this.connectionState$.next('Error');
     }
   }
 
   disconnect(): void {
-    if (this.client) {
-      this.client.end();
-      this.client = undefined;
-    }
+    window.electronAPI.send('mqtt-disconnect');
     this.connectionState$.next('Disconnected');
     this.connectedClients$.next([]);
   }
 
-  subscribeToTopic(topic: string): void {
-    if (this.client && this.client.connected) {
-      this.client.subscribe(topic, (err) => {
-        if (err) {
-          console.error(`Failed to subscribe to topic: ${topic}`, err);
-        } else {
-          console.log(`Subscribed to ${topic}`);
-        }
-      });
-    }
+  subscribeToTopic(topic: string, options?: { qos: number }): void {
+    window.electronAPI.send('mqtt-subscribe', { topic, options });
   }
 
   unsubscribeFromTopic(topic: string): void {
-    if (this.client && this.client.connected) {
-      this.client.unsubscribe(topic, (err) => {
-        if (err) {
-          console.error(`Failed to unsubscribe from topic: ${topic}`, err);
-        } else {
-          console.log(`Unsubscribed from ${topic}`);
-        }
-      });
-    }
+    window.electronAPI.send('mqtt-unsubscribe', topic);
   }
 
-  publish(topic: string, message: string, options: IClientPublishOptions): void {
-    if (this.client && this.client.connected) {
-      this.client.publish(topic, message, options, (err) => {
-        if (err) {
-          console.error(`Failed to publish to topic: ${topic}`, err);
-        }
-      });
-    }
+  publish(topic: string, message: string, options: any): void {
+    window.electronAPI.send('mqtt-publish', { topic, message, options });
+  }
+
+  // Bileşen yok edildiğinde listener'ları temizle
+  ngOnDestroy() {
+    this.cleanupFunctions.forEach(cleanup => cleanup());
   }
 }
+

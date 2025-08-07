@@ -14,15 +14,11 @@ import { MatListModule } from '@angular/material/list';
 // Core Services
 import { MqttService } from '../../../../core/services/mqtt.service';
 import { DeviceStateService } from '../../../../core/services/device-state.service';
+import { DeviceData, DeviceDataService } from '../../../../core/services/device-data.service';
 
-// Define a type for the parsed client ID for better type safety
-interface ParsedClientId {
-  clientId: string;
-  tenant: string;
-  moduleSerial: string;
-  softwareVersion: string;
-  displayVersion: string;
-  ipAddress: string;
+// Define a type for our devices
+interface DisplayDevice extends DeviceData {
+  displayId: string;
 }
 
 @Component({
@@ -43,12 +39,13 @@ export class DeviceListComponent {
   // Services
   private mqttService = inject(MqttService);
   private deviceStateService = inject(DeviceStateService);
+  private deviceDataService = inject(DeviceDataService);
 
   // Form Control for filtering
   public filterControl = new FormControl('');
 
   // State Signals
-  public clients = toSignal(this.mqttService.connectedClients$, { initialValue: [] });
+  public devices = this.deviceDataService.deviceData; // Cihaz verilerini DeviceDataService'ten al
   public selectedDevice = toSignal(this.deviceStateService.selectedDevice$);
   
   private filterTerm = toSignal(
@@ -60,43 +57,33 @@ export class DeviceListComponent {
   );
 
   // Computed signal to get the filtered and parsed list of devices
-  public filteredClients = computed(() => {
-    const clients = this.clients();
+  public filteredDevices = computed(() => {
+    const devices = this.devices();
     const term = this.filterTerm()?.toLowerCase() || '';
 
-    return clients
-      .map(client => this.parseClientId(client.clientId))
-      .filter((client): client is ParsedClientId => {
-        // This is a type guard that filters out nulls and satisfies TypeScript
-        if (!client) return false;
-        return client.moduleSerial.toLowerCase().includes(term);
+    return devices
+      .map(device => this.createDisplayDevice(device))
+      .filter((device): device is DisplayDevice => {
+        if (!device) return false;
+        return device.serialNo.toLowerCase().includes(term) ||
+               (device.branchName?.toLowerCase().includes(term) ?? false) ||
+               (device.gameName?.toLowerCase().includes(term) ?? false);
       });
   });
 
-  /**
-   * Parses the raw MQTT client ID string into a structured object.
-   * @param clientId The raw client ID, e.g., "tenant@moduleSerial@swVersion@displayVersion@ip"
-   * @returns A ParsedClientId object or null if parsing fails.
-   */
-  private parseClientId(clientId: string): ParsedClientId | null {
-    if (!clientId) return null;
-    const parts = clientId.split('@');
-    if (parts.length < 5) return null; // Ensure all parts are present
-    return {
-      clientId,
-      tenant: parts[0],
-      moduleSerial: parts[1],
-      softwareVersion: parts[2],
-      displayVersion: parts[3],
-      ipAddress: parts[4],
-    };
+  private createDisplayDevice(device: DeviceData): DisplayDevice {
+    // Burada displayId'yi nasıl oluşturacağınıza karar verin
+    // Örneğin: `${device.branchName || ''} - ${device.gameName || ''} (${device.serialNo})`
+    const displayId = `${device.branchName || ''} - ${device.gameName || ''} (${device.serialNo})`;
+    return { ...device, displayId };
   }
 
   /**
    * Sets the selected device in the DeviceStateService.
-   * @param client The client object that was selected.
+   * @param device The device object that was selected.
    */
-  selectDevice(client: ParsedClientId): void {
-    this.deviceStateService.selectedDevice$.next(client);
+  selectDevice(device: DisplayDevice): void {
+    this.deviceStateService.selectedDevice$.next(device);
   }
 }
+

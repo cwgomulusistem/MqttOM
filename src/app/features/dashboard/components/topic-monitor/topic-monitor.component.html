@@ -4,17 +4,17 @@
     <div class="monitor-content">
       <!-- Available Topics Section -->
       <div class="topics-section">
-        <mat-card-title>Available Topics for {{ device.moduleSerial }}</mat-card-title>
+        <mat-card-title>Available Topics for {{ device.serialNo }}</mat-card-title>
         <mat-card-subtitle>Click to subscribe and start monitoring messages.</mat-card-subtitle>
         <mat-list>
-          @for (topic of availableTopics(); track topic) {
+          @for (topic of availableTopics(); track topic.name) {
             <mat-list-item>
-              <span matListItemTitle class="topic-name">{{ topic }}</span>
+              <span matListItemTitle class="topic-name">{{ topic.name }} (QoS: {{ topic.qos.qos }})</span>
               <button mat-flat-button 
-                      [color]="isSubscribed(topic) ? 'warn' : 'primary'"
-                      (click)="toggleSubscription(topic)">
-                <mat-icon>{{ isSubscribed(topic) ? 'notifications_off' : 'notifications_active' }}</mat-icon>
-                <span>{{ isSubscribed(topic) ? 'Unsubscribe' : 'Subscribe' }}</span>
+                      [color]="isSubscribed(topic.name) ? 'warn' : 'primary'"
+                      (click)="toggleSubscription(topic.name, topic.qos.qos)">
+                <mat-icon>{{ isSubscribed(topic.name) ? 'notifications_off' : 'notifications_active' }}</mat-icon>
+                <span>{{ isSubscribed(topic.name) ? 'Unsubscribe' : 'Subscribe' }}</span>
               </button>
             </mat-list-item>
           }
@@ -27,6 +27,11 @@
       <div class="log-section">
         <div class="log-header">
           <mat-card-title>Message Log</mat-card-title>
+          <mat-form-field appearance="outline" class="message-filter-field">
+            <mat-label>Filter Messages</mat-label>
+            <input matInput [formControl]="messageFilterControl" placeholder="Filter by topic or payload...">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
           <button mat-stroked-button color="warn" (click)="clearLogs()" [disabled]="messages().length === 0">
             <mat-icon>delete_sweep</mat-icon>
             <span>Clear Logs</span>
@@ -34,7 +39,7 @@
         </div>
         
         <div class="log-display">
-          @for (msg of messages(); track msg.timestamp) {
+          @for (msg of filteredMessages(); track msg.timestamp) {
             <div class="log-entry">
               <div class="log-meta">
                 <span class="log-topic">{{ msg.topic }}</span>
@@ -60,3 +65,4 @@
     </div>
   }
 </mat-card>
+

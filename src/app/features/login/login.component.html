@@ -29,6 +29,26 @@
           }
         </mat-form-field>
 
+        <!-- Protocol -->
+        <mat-form-field appearance="outline">
+          <mat-label>Protocol</mat-label>
+          <mat-select formControlName="protocol">
+            <mat-option value="ws">ws</mat-option>
+            <mat-option value="wss">wss</mat-option>
+            <mat-option value="mqtt">mqtt</mat-option>
+            <mat-option value="mqtts">mqtts</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- Tenant -->
+        <mat-form-field appearance="outline">
+          <mat-label>Tenant</mat-label>
+          <input matInput formControlName="tenant" placeholder="e.g., myTenant" required>
+          @if (loginForm.get('tenant')?.hasError('required')) {
+            <mat-error>Tenant is required</mat-error>
+          }
+        </mat-form-field>
+
         <!-- Username -->
         <mat-form-field appearance="outline">
           <mat-label>Username (Optional)</mat-label>
@@ -38,15 +58,26 @@
         <!-- Password -->
         <mat-form-field appearance="outline">
           <mat-label>Password (Optional)</mat-label>
-          <input matInput formControlName="password" [type]="hidePassword() ? 'password' : 'text'">
+          <input matInput formControlName="password" [type]="hidePassword ? 'password' : 'text'">
         </mat-form-field>
+
+        <!-- Device Data Upload -->
+        <div class="file-upload-container">
+          <input type="file" #fileInput (change)="onFileSelected($event)" accept=".json" style="display: none;">
+          <button mat-stroked-button type="button" color="accent" (click)="fileInput.click()">
+            <mat-icon>upload_file</mat-icon> Upload Device Data (JSON)
+          </button>
+          @if (fileName) {
+            <span class="file-name">{{ fileName }}</span>
+          }
+        </div>
 
       </form>
     </mat-card-content>
 
     <mat-card-actions align="end">
-        <button mat-flat-button color="primary" (click)="connect()" [disabled]="!loginForm.valid || connectionState() === 'Connecting'">
-            @if (connectionState() === 'Connecting') {
+        <button mat-flat-button color="primary" (click)="connect()" [disabled]="!loginForm.valid || (connectionState$ | async) === 'Connecting'">
+            @if ((connectionState$ | async) === 'Connecting') {
                 <span>Connecting...</span>
             } @else {
                 <span>Connect</span>
@@ -54,7 +85,7 @@
         </button>
     </mat-card-actions>
 
-     @if (connectionState() === 'Connecting') {
+     @if ((connectionState$ | async) === 'Connecting') {
       <div class="spinner-overlay">
         <mat-progress-spinner mode="indeterminate" diameter="50"></mat-progress-spinner>
       </div>

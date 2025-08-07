@@ -40,9 +40,6 @@ export class DashboardComponent {
   // State
   public connectionState = toSignal(this.mqttService.connectionState$);
 
-  /**
-   * Disconnects from the MQTT broker and navigates back to the login page.
-   */
   disconnect(): void {
     this.mqttService.disconnect();
     this.router.navigate(['/login']);

@@ -13,18 +13,18 @@
 
   <!-- Device List -->
   <mat-nav-list class="device-list">
-    @for (client of filteredClients(); track client.clientId) {
+    @for (device of filteredDevices(); track device.serialNo) {
       <a mat-list-item 
-         (click)="selectDevice(client)" 
-         [class.active]="selectedDevice()?.clientId === client.clientId">
+         (click)="selectDevice(device)" 
+         [class.active]="selectedDevice()?.serialNo === device.serialNo">
         <mat-icon matListItemIcon>memory</mat-icon>
-        <div matListItemTitle>{{ client.moduleSerial }}</div>
-        <div matListItemLine>{{ client.ipAddress }}</div>
+        <div matListItemTitle>{{ device.displayId }}</div>
+        <div matListItemLine>{{ device.serialNo }} - {{ device.ipAddress }}</div>
       </a>
     } @empty {
       <div class="empty-state">
-         @if (clients().length === 0) {
-            <p>No devices connected.</p>
+         @if (devices().length === 0) {
+            <p>No devices loaded. Please upload a JSON file.</p>
          } @else {
             <p>No devices match your filter.</p>
          }
@@ -32,3 +32,4 @@
     }
   </mat-nav-list>
 </div>
+
