@@ -32,4 +32,12 @@ export class AuthService {
   public clearTenant(): void {
     this.tenant.set(null);
   }
+
+  /**
+   * Checks if the user is authenticated.
+   * @returns `true` if a tenant is set, `false` otherwise.
+   */
+  public isAuthenticated(): boolean {
+    return this.tenant() !== null;
+  }
 }

@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './features/login/login.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { SettingsComponent } from './features/settings/settings.component'; // Will be created next
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -11,6 +11,7 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     component: DashboardComponent,
+    canActivate: [authGuard], // Protect this route
   },
   {
     path: 'settings',
@@ -19,14 +20,15 @@ export const routes: Routes = [
       import('./features/settings/settings.component').then(
         (m) => m.SettingsComponent
       ),
+    canActivate: [authGuard], // Also protect settings
   },
   {
     path: '',
-    redirectTo: '/dashboard', // Default to dashboard, assuming user might be logged in
+    redirectTo: '/login', // Default to login
     pathMatch: 'full',
   },
   {
     path: '**',
-    redirectTo: '/dashboard' // Redirect unknown paths to dashboard
-  }
+    redirectTo: '/login', // Redirect unknown paths to login
+  },
 ];

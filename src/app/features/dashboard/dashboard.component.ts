@@ -1,4 +1,3 @@
-
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -14,6 +13,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MqttService } from '../../core/services/mqtt.service';
 import { TopicMonitorComponent } from './components/topic-monitor/topic-monitor.component';
 import { PublisherComponent } from './components/publisher/publisher.component';
+import { DeviceListComponent } from './components/device-list/device-list.component';
+import { TopicManagerComponent } from './components/topic-manager/topic-manager.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -26,8 +27,10 @@ import { PublisherComponent } from './components/publisher/publisher.component';
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
+    DeviceListComponent,
     TopicMonitorComponent,
     PublisherComponent,
+    TopicManagerComponent, // Import TopicManagerComponent
   ],
 })
 export class DashboardComponent {

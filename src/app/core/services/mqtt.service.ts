@@ -1,19 +1,11 @@
-import { Injectable, NgZone, inject, effect } from '@angular/core';
+import { Injectable, NgZone, inject, effect, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { DeviceStateService } from './device-state.service';
 
-declare global {
-  interface Window {
-    electronAPI: {
-      send: (channel: string, data?: any) => void;
-      invoke: (channel: string, data?: any) => Promise<any>;
-      on: (channel: string, func: (...args: any[]) => void) => () => void;
-      loadCredentials: () => Promise<any>;
-      saveCredentials: (credentials: any) => void;
-    };
-  }
-}
+// The 'declare global' block has been removed from here.
+// TypeScript will now automatically use the centralized definition
+// in /src/electron-api.d.ts
 
 export interface MqttConfig {
   host: string;
@@ -28,10 +20,10 @@ export type MqttConnectionState = 'Disconnected' | 'Connecting' | 'Connected' | 
 @Injectable({
   providedIn: 'root',
 })
-export class MqttService {
-  private zone = inject(NgZone);
-  private router = inject(Router);
-  private deviceStateService = inject(DeviceStateService);
+export class MqttService implements OnDestroy {
+  private readonly zone = inject(NgZone);
+  private readonly router = inject(Router);
+  private readonly deviceStateService = inject(DeviceStateService);
 
   public connectionState$ = new BehaviorSubject<MqttConnectionState>('Disconnected');
   public messageStream$ = new Subject<{ topic: string; payload: string }>();
@@ -42,20 +34,25 @@ export class MqttService {
   constructor() {
     this.setupElectronListeners();
 
-    // Effect to dynamically manage MQTT subscriptions
+    // Effect to dynamically manage MQTT subscriptions based on the final, resolved topics
     effect(() => {
       if (this.connectionState$.value !== 'Connected') {
         return; // Only manage subscriptions when connected
       }
 
-      const newTopics = this.deviceStateService.customTopics();
+      const newTopics = this.deviceStateService.subscribableTopics();
       const oldTopics = this.lastSubscribedTopics;
 
       const topicsToUnsubscribe = oldTopics.filter(t => !newTopics.includes(t));
       const topicsToSubscribe = newTopics.filter(t => !oldTopics.includes(t));
 
-      topicsToUnsubscribe.forEach(topic => this.unsubscribeFromTopic(topic));
-      topicsToSubscribe.forEach(topic => this.subscribeToTopic(topic));
+      if (topicsToUnsubscribe.length > 0) {
+        topicsToUnsubscribe.forEach(topic => this.unsubscribeFromTopic(topic));
+      }
+
+      if (topicsToSubscribe.length > 0) {
+        topicsToSubscribe.forEach(topic => this.subscribeToTopic(topic));
+      }
 
       this.lastSubscribedTopics = newTopics;
     });
@@ -67,13 +64,10 @@ export class MqttService {
         if (status === 'connected') {
           this.connectionState$.next('Connected');
           this.router.navigate(['/dashboard']);
-          // On connection, subscribe to all current custom topics
-          this.lastSubscribedTopics = []; // Reset before subscribing
-          const topicsToSubscribe = this.deviceStateService.customTopics();
-          topicsToSubscribe.forEach(topic => this.subscribeToTopic(topic));
-          this.lastSubscribedTopics = topicsToSubscribe;
+          // On initial connection, lastSubscribedTopics is empty, so all topics will be subscribed to.
         } else if (status === 'disconnected') {
           this.connectionState$.next('Disconnected');
+          this.lastSubscribedTopics = []; // Clear subscriptions on disconnect
         } else if (status === 'error') {
           console.error('MQTT Error from main process:', error);
           this.connectionState$.next('Error');
@@ -105,15 +99,15 @@ export class MqttService {
 
   disconnect(): void {
     window.electronAPI.send('mqtt-disconnect');
-    this.connectionState$.next('Disconnected');
   }
 
-  subscribeToTopic(topic: string, options?: { qos: number }): void {
-    const subscribeOptions = options || { qos: 2 };
-    window.electronAPI.send('mqtt-subscribe', { topic, options: subscribeOptions });
+  private subscribeToTopic(topic: string, options: { qos: 2 } = { qos: 2 }): void {
+    console.log(`Subscribing to: ${topic}`);
+    window.electronAPI.send('mqtt-subscribe', { topic, options });
   }
 
-  unsubscribeFromTopic(topic: string): void {
+  private unsubscribeFromTopic(topic: string): void {
+    console.log(`Unsubscribing from: ${topic}`);
     window.electronAPI.send('mqtt-unsubscribe', topic);
   }
 
@@ -121,46 +115,29 @@ export class MqttService {
     window.electronAPI.send('mqtt-publish', { topic, message, options });
   }
 
-  /**
-   * Checks if a topic matches a subscription pattern with wildcards.
-   * @param pattern The subscription pattern (e.g., 'devices/+/status', 'devices/#').
-   * @param topic The topic from the message (e.g., 'devices/123/status').
-   * @returns True if the topic matches the pattern.
-   */
   public topicMatches(pattern: string, topic: string): boolean {
-    if (pattern === topic) {
-        return true;
-    }
-    if (pattern === '#') {
-        return true;
-    }
-
+    if (pattern === '#' || pattern === topic) return true;
     const patternSegments = pattern.split('/');
     const topicSegments = topic.split('/');
-
     const patternLength = patternSegments.length;
     const topicLength = topicSegments.length;
 
     if (patternSegments[patternLength - 1] === '#') {
-        if (topicLength < patternLength - 1) {
-            return false;
+      if (topicLength < patternLength - 1) return false;
+      for (let i = 0; i < patternLength - 1; i++) {
+        if (patternSegments[i] !== '+' && patternSegments[i] !== topicSegments[i]) {
+          return false;
         }
-        for (let i = 0; i < patternLength - 1; i++) {
-            if (patternSegments[i] !== '+' && patternSegments[i] !== topicSegments[i]) {
-                return false;
-            }
-        }
-        return true;
+      }
+      return true;
     }
 
-    if (patternLength !== topicLength) {
-        return false;
-    }
+    if (patternLength !== topicLength) return false;
 
     for (let i = 0; i < patternLength; i++) {
-        if (patternSegments[i] !== '+' && patternSegments[i] !== topicSegments[i]) {
-            return false;
-        }
+      if (patternSegments[i] !== '+' && patternSegments[i] !== topicSegments[i]) {
+        return false;
+      }
     }
     return true;
   }

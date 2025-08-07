@@ -30,14 +30,16 @@ export class TopicManagerComponent {
   public customTopics = this.deviceStateService.customTopics;
 
   addTopic(): void {
-    const topic = this.newTopic().trim();
-    if (topic) {
-      this.deviceStateService.addCustomTopic(topic);
+    const topicToAdd = this.newTopic().trim();
+    if (topicToAdd && !this.customTopics().includes(topicToAdd)) {
+      const updatedTopics = [...this.customTopics(), topicToAdd];
+      this.deviceStateService.setAllCustomTopics(updatedTopics);
       this.newTopic.set('');
     }
   }
 
-  removeTopic(topic: string): void {
-    this.deviceStateService.removeCustomTopic(topic);
+  removeTopic(topicToRemove: string): void {
+    const updatedTopics = this.customTopics().filter(t => t !== topicToRemove);
+    this.deviceStateService.setAllCustomTopics(updatedTopics);
   }
 }
