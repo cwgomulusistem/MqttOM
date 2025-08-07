@@ -1,45 +1,86 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, NgZone, inject } from '@angular/core';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DeviceStateService {
-  /**
-   * Holds the state of the currently selected device from the device list.
-   * Components can react to changes in this signal.
-   * Emits `null` when no device is selected.
-   */
-  public selectedDevice = signal<any | null>(null);
+  private readonly TOPICS_CONFIG_KEY = 'custom-topics-config';
+  private readonly ngZone = inject(NgZone);
 
-  /**
-   * Manages a list of user-defined topics for MQTT subscription.
-   * Initialized with a wildcard topic '#' to subscribe to all topics by default.
-   */
+  public selectedDevice = signal<any | null>(null);
   public customTopics = signal<string[]>(['#']);
 
-  constructor() {}
+  constructor() {
+    this.loadCustomTopics();
+  }
 
   /**
-   * Adds a new topic to the custom subscription list if it's not already included.
-   * @param topic The topic string to add (e.g., 'devices/+/status', '#').
+   * Loads the list of custom topics from the persistent storage via Electron.
+   */
+  private async loadCustomTopics(): Promise<void> {
+    try {
+      const topics = await window.electronAPI.invoke('load-config', this.TOPICS_CONFIG_KEY);
+      if (topics && Array.isArray(topics) && topics.length > 0) {
+        this.ngZone.run(() => {
+          this.customTopics.set(topics);
+        });
+      } else {
+        // If no topics are saved, set a default and save it
+        this.saveCustomTopics();
+      }
+    } catch (error) {
+      console.error('Failed to load custom topics:', error);
+      // Fallback to default if loading fails
+      this.customTopics.set(['#']);
+    }
+  }
+
+  /**
+   * Saves the current list of custom topics to persistent storage via Electron.
+   */
+  private saveCustomTopics(): void {
+    try {
+      window.electronAPI.send('save-config', {
+        key: this.TOPICS_CONFIG_KEY,
+        data: this.customTopics(),
+      });
+    } catch (error) {
+      console.error('Failed to save custom topics:', error);
+    }
+  }
+
+  /**
+   * Adds a new topic and saves the updated list.
    */
   addCustomTopic(topic: string): void {
     if (!topic || topic.trim() === '') return;
     this.customTopics.update(currentTopics => {
       if (currentTopics.includes(topic)) {
-        return currentTopics; // Topic already exists, return the same array
+        return currentTopics;
       }
-      return [...currentTopics, topic];
+      const updatedTopics = [...currentTopics, topic];
+      this.saveCustomTopics(); // Save after update
+      return updatedTopics;
     });
   }
 
   /**
-   * Removes a topic from the custom subscription list.
-   * @param topicToRemove The topic string to remove.
+   * Removes a topic and saves the updated list.
    */
   removeCustomTopic(topicToRemove: string): void {
-    this.customTopics.update(currentTopics =>
-      currentTopics.filter(topic => topic !== topicToRemove)
-    );
+    this.customTopics.update(currentTopics => {
+      const updatedTopics = currentTopics.filter(t => t !== topicToRemove);
+      this.saveCustomTopics(); // Save after update
+      return updatedTopics;
+    });
+  }
+
+  /**
+   * Replaces the entire list of topics with a new one and saves it.
+   * @param newTopics The new array of topic strings.
+   */
+  setAllCustomTopics(newTopics: string[]): void {
+    this.customTopics.set(newTopics);
+    this.saveCustomTopics();
   }
 }

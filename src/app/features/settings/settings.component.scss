@@ -1,0 +1,75 @@
+:host {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem;
+  background-color: #f0f2f5;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+.settings-container {
+  width: 100%;
+  max-width: 800px;
+}
+
+mat-card {
+  overflow: hidden; // To make card actions background color not to overflow
+}
+
+mat-card-header {
+  padding-bottom: 1.5rem;
+}
+
+mat-card-subtitle {
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.form-container {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.template-input {
+  flex-grow: 1;
+}
+
+.template-item {
+  border-bottom: 1px solid #eee;
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 2rem;
+  color: #777;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #ccc;
+  }
+  p {
+    margin: 0;
+  }
+}
+
+mat-card-actions {
+  padding: 1rem 1.5rem !important;
+  background-color: #f7f7f7;
+  border-top: 1px solid #eee;
+}

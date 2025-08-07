@@ -1,0 +1,69 @@
+<div class="settings-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-icon mat-card-avatar>topic</mat-icon>
+      <mat-card-title>Manage Topic Templates</mat-card-title>
+      <mat-card-subtitle>
+        Add or remove topic subscription templates.
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="form-container">
+        <mat-form-field appearance="outline" class="template-input">
+          <mat-label>New Topic Template</mat-label>
+          <input
+            matInput
+            #templateInput
+            placeholder="e.g., MQTTnet.RPC/+/{serialNo}.PriceChange"
+            [ngModel]="newTopicTemplate()"
+            (ngModelChange)="newTopicTemplate.set($event)"
+            (keyup.enter)="addTemplate()"
+          />
+        </mat-form-field>
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="addTemplate()"
+          [disabled]="!newTopicTemplate().trim()"
+          matTooltip="Add this template to the list below"
+        >
+          <mat-icon>add</mat-icon>
+          <span>Add</span>
+        </button>
+      </div>
+
+      <mat-list>
+        @for (template of topicTemplates(); track template) {
+          <mat-list-item class="template-item">
+            <mat-icon matListItemAvatar>playlist_add_check</mat-icon>
+            <div matListItemTitle>{{ template }}</div>
+            <div class="spacer"></div>
+            <button
+              mat-icon-button
+              color="warn"
+              (click)="removeTemplate(template)"
+              [attr.aria-label]="'Remove template ' + template"
+            >
+              <mat-icon>delete_outline</mat-icon>
+            </button>
+          </mat-list-item>
+        } @empty {
+          <div class="empty-state">
+            <mat-icon>remove_from_queue</mat-icon>
+            <p>No topic templates defined.</p>
+            <p>Add a template above to get started.</p>
+          </div>
+        }
+      </mat-list>
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button mat-stroked-button (click)="cancel()">Cancel</button>
+      <button mat-flat-button color="primary" (click)="saveSettings()">
+        <mat-icon>save</mat-icon>
+        <span>Save and Go to Dashboard</span>
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

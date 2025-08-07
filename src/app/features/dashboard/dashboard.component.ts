@@ -8,14 +8,12 @@ import { CommonModule } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 // Core Services & Components
 import { MqttService } from '../../core/services/mqtt.service';
-import { DeviceListComponent } from './components/device-list/device-list.component';
 import { TopicMonitorComponent } from './components/topic-monitor/topic-monitor.component';
 import { PublisherComponent } from './components/publisher/publisher.component';
-import { TopicManagerComponent } from './components/topic-manager/topic-manager.component';
 
 @Component({
   selector: 'app-dashboard',
@@ -27,11 +25,9 @@ import { TopicManagerComponent } from './components/topic-manager/topic-manager.
     MatToolbarModule,
     MatButtonModule,
     MatIconModule,
-    MatSidenavModule,
-    DeviceListComponent,
+    MatTooltipModule,
     TopicMonitorComponent,
     PublisherComponent,
-    TopicManagerComponent, // Import the new component
   ],
 })
 export class DashboardComponent {
@@ -42,6 +38,16 @@ export class DashboardComponent {
   // State
   public connectionState = toSignal(this.mqttService.connectionState$);
 
+  /**
+   * Navigates to the settings page.
+   */
+  goToSettings(): void {
+    this.router.navigate(['/settings']);
+  }
+
+  /**
+   * Disconnects from the MQTT broker and returns to the login page.
+   */
   disconnect(): void {
     this.mqttService.disconnect();
     this.router.navigate(['/login']);
