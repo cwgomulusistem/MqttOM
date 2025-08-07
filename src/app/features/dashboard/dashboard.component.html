@@ -30,19 +30,21 @@
 
   <!-- Main Content Area -->
   <main class="main-content">
-    <!-- Column 1: Device List -->
-    <div class="content-column device-list-col">
+    <!-- Left Panel: Device List -->
+    <div class="left-panel">
       <app-device-list></app-device-list>
     </div>
 
-    <!-- Column 2: Topic Monitor -->
-    <div class="content-column topic-monitor-col">
-       <app-topic-monitor></app-topic-monitor>
-    </div>
-
-    <!-- Column 3: Publisher -->
-    <div class="content-column publisher-col">
-        <app-publisher></app-publisher>
+    <!-- Right Panel: Combined Publisher and Monitor -->
+    <div class="right-panel">
+      <div class="right-panel-content">
+        <div class="publisher-container">
+          <app-publisher></app-publisher>
+        </div>
+        <div class="monitor-container">
+          <app-topic-monitor></app-topic-monitor>
+        </div>
+      </div>
     </div>
   </main>
 </div>

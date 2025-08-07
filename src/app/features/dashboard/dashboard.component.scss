@@ -1,9 +1,9 @@
-
 :host {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh; // Use vh for full viewport height
   background-color: #f4f7f9;
+  overflow: hidden; // Prevent scrolling at the host level
 }
 
 .dashboard-container {
@@ -58,26 +58,49 @@ button[mat-stroked-button] {
   display: flex;
   gap: 1rem;
   padding: 1rem;
-  overflow: hidden;
+  overflow: hidden; // Important for nested scrolling
 }
 
-.content-column {
+// Left Panel for Device List
+.left-panel {
+  flex: 0 0 380px; // A bit wider
+  display: flex;
+  flex-direction: column;
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  overflow: hidden; /* Let the inner component handle scrolling */
+  overflow-y: auto; // Allow scrolling within the device list
+}
+
+// Right Panel for Publisher and Monitor
+.right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; // Hide overflow
+}
+
+.right-panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+}
+
+.publisher-container,
+.monitor-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
 }
 
-.device-list-col {
-  flex: 0 0 350px; /* Fixed width */
+.publisher-container {
+  flex: 0 0 auto; // Publisher takes the space it needs
 }
 
-.topic-monitor-col {
-  flex: 2; /* Takes up the most space */
-}
-
-.publisher-col {
-  flex: 0 0 400px; /* Fixed width */
+.monitor-container {
+  flex: 1; // Monitor takes the remaining space
+  overflow-y: auto; // Allow vertical scrolling
 }

@@ -14,21 +14,22 @@ Bu proje, yüzlerce IoT cihazını gerçek zamanlı olarak izlememize, onlarla e
 
 ---
 
-## **Güncel Plan: Topic Monitörünün Yeniden Yapılandırılması**
+## **Güncel Plan: Gelişmiş Topic Yönetimi ve Arayüz İyileştirmeleri**
 
-**Amaç:** `TopicMonitorComponent`'i, `DeviceListComponent`'te yapılan son değişikliklerle uyumlu hale getirmek ve kullanıcı deneyimini iyileştirmek. Yeni yapıda, bir cihaz seçildiğinde o cihaza ait topic'ler monitörde listelenecek, kullanıcı bir topic seçtiğinde ise sadece o topic'e ait mesajlar gerçek zamanlı olarak görüntülenecektir.
+**Amaç:** Uygulamaya esnek bir topic yönetim sistemi eklemek, RPC dahil tüm topic'leri dinleyebilmek ve arayüzü daha kullanışlı hale getirmek. Kullanıcılar artık istedikleri topic'leri (örn. `#` veya `MQTTnet.RPC/+/+`) manuel olarak ekleyip kaldırabilecekler.
 
 **Adımlar:**
 
-1.  **`topic-monitor.component.ts`'in Yeniden Yazılması:**
-    *   Bileşen artık kendi topic listesini oluşturmayacak; bunun yerine `DeviceStateService`'ten gelen `selectedDevice` sinyalindeki hazır topic listesini kullanacak.
-    *   Kullanıcının seçtiği topic'i saklamak için `selectedTopic` adında bir sinyal oluşturulacak.
-    *   Seçilen topic değiştiğinde MQTT aboneliklerini yönetecek (eskiyi bırak, yeniye abone ol) bir `effect` mekanizması kurulacak.
-    *   `MqttService`'teki genel mesaj akışını `selectedTopic`'e göre filtreleyen bir `computed` sinyal oluşturulacak.
-2.  **`topic-monitor.component.html`'in Modernizasyonu:**
-    *   Arayüz, seçilen cihaza ait topic'lerin listelendiği bir alan ve bu topic'lerden birine tıklandığında mesajların gösterildiği bir monitör alanı olarak ikiye ayrılacak.
-3.  **`topic-monitor.component.scss`'in Güncellenmesi:**
-    *   Yeni arayüz düzenini destekleyen ve seçili olan topic'i vurgulayan stiller eklenecek.
+1.  **Arayüzün Yeniden Düzenlenmesi:**
+    *   `DashboardComponent`'te **Publisher** ve **Topic Monitor** bileşenleri yan yana, yatay bir düzende konumlandırılacak. Bu, özellikle geniş ekranlarda daha iyi bir genel bakış sağlayacak.
+2.  **Topic Yönetim Arayüzünün Oluşturulması:**
+    *   `TopicManagerComponent` adında yeni bir bileşen oluşturulacak. Bu bileşen, kullanıcıların abone olunacak topic'leri ekleyip silebileceği bir form içerecek.
+3.  **Merkezi Topic Yönetim Servisinin Geliştirilmesi:**
+    *   `DeviceStateService`, artık sadece cihaz durumunu değil, aynı zamanda kullanıcı tarafından eklenen özel topic listesini de yönetecek. Varsayılan olarak bu liste `['#']` topic'ini içerecek.
+4.  **MQTT Servisinin Dinamik Abonelik Yeteneği Kazanması:**
+    *   `MqttService`, başlangıçta `DeviceStateService`'teki varsayılan topic'lere abone olacak ve bu listede yapılan her değişikliği (yeni topic ekleme/çıkarma) anında MQTT broker'ına yansıtacak.
+5.  **Bileşenlerin Entegrasyonu:**
+    *   Yeni `TopicManagerComponent`, `DashboardComponent`'e entegre edilecek ve tüm sistemin uyumlu bir şekilde çalışması sağlanacak.
 
 ---
 
@@ -38,6 +39,7 @@ Bu proje, yüzlerce IoT cihazını gerçek zamanlı olarak izlememize, onlarla e
 
 *   Proje iskeleti kuruldu, çekirdek servisler oluşturuldu, login ve dashboard bileşenleri geliştirildi.
 *   `DeviceListComponent`, servis tabanlı ve sinyal odaklı çalışacak şekilde tamamen yeniden yapılandırıldı. Arayüzü iki panelli (cihaz listesi ve topic detayları) modern bir yapıya kavuşturuldu.
+*   `TopicMonitorComponent`'in `DeviceListComponent`'teki değişikliklerle uyumlu hale getirilmesi sağlandı.
 *   Tüm derleme hataları giderilerek projenin kararlı bir duruma getirilmesi sağlandı.
 
 ---
