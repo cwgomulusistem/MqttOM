@@ -1,135 +1,156 @@
-
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { startWith, debounceTime } from 'rxjs';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-// Angular Material Modules
+import { MatListModule } from '@angular/material/list';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatListModule } from '@angular/material/list';
-import { MatChipsModule } from '@angular/material/chips'; // Import Chips module for topic types
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
-// Core Services
-import { DeviceStateService } from '../../../../core/services/device-state.service';
-import { DeviceData, DeviceDataService } from '../../../../core/services/device-data.service';
-import { MqttTopic, MqttTopicService } from '../../../../core/services/mqtt-topic.service'; // Import Topic Service
+import { DeviceDataService, DeviceData } from '../../core/services/device-data.service';
+import { DeviceStateService } from '../../core/services/device-state.service';
+import { MqttTopicService, MqttTopic } from '../../core/services/mqtt-topic.service';
+import { AuthService } from '../../core/services/auth.service';
 
-// Extend the display device to include topics
-interface DisplayDevice extends DeviceData {
-  displayId: string;
+/**
+ * Cihaz verilerini ve o cihaza ait topic listesini bir arada tutan arayüz.
+ * Arayüzde gösterilecek cihaz nesneleri bu yapıyı kullanır.
+ */
+export interface DisplayDevice extends DeviceData {
   topics: MqttTopic[];
 }
 
 @Component({
   selector: 'app-device-list',
-  standalone: true, // Make it a standalone component for modern Angular
   templateUrl: './device-list.component.html',
   styleUrls: ['./device-list.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    MatListModule,
     MatFormFieldModule,
     MatInputModule,
     MatIconModule,
-    MatListModule,
-    MatChipsModule, // Add chips to imports
+    MatChipsModule,
+    MatTooltipModule,
   ],
 })
 export class DeviceListComponent {
-  // --- Services ---
-  private deviceStateService = inject(DeviceStateService);
-  private deviceDataService = inject(DeviceDataService);
-  private mqttTopicService = inject(MqttTopicService);
+  // Servisleri inject et
+  private readonly deviceDataService = inject(DeviceDataService);
+  private readonly deviceStateService = inject(DeviceStateService);
+  private readonly mqttTopicService = inject(MqttTopicService);
+  private readonly authService = inject(AuthService);
 
-  // --- Form Controls ---
-  public deviceFilterControl = new FormControl('');
-  public topicFilterControl = new FormControl(''); // New control for filtering topics
+  // Sinyaller ve Form Kontrolleri
+  public readonly allDevices = this.deviceDataService.devices;
+  public readonly selectedDevice = this.deviceStateService.selectedDevice;
+  private readonly tenant = this.authService.tenant;
 
-  // --- State Signals ---
-  private allDevices = this.deviceDataService.deviceData;
-  public selectedDevice = toSignal(this.deviceStateService.selectedDevice$);
+  public readonly deviceFilterControl = new FormControl('');
+  public readonly topicFilterControl = new FormControl('');
 
-  private deviceFilterTerm = toSignal(
-    this.deviceFilterControl.valueChanges.pipe(startWith(''), debounceTime(300)),
-    { initialValue: '' }
-  );
-
-  private topicFilterTerm = toSignal(
-    this.topicFilterControl.valueChanges.pipe(startWith(''), debounceTime(300)),
-    { initialValue: '' }
-  );
-  
-  // --- Computed Signals ---
-
-  // 1. Computed signal to get the filtered and parsed list of devices
-  public filteredDevices = computed(() => {
+  /**
+   * Cihaz listesini filtreleyen ve her bir cihaza ait topic'leri oluşturan hesaplanmış sinyal.
+   * Sadece 'isConnected' durumu true olan cihazları dikkate alır.
+   */
+  public readonly filteredDevices = computed<DisplayDevice[]>(() => {
     const devices = this.allDevices();
-    const term = this.deviceFilterTerm()?.toLowerCase() || '';
-    const currentTenant = this.deviceDataService.currentTenant(); // Get current tenant value
-
-    if (!currentTenant) return []; // Don't process if tenant isn't set
+    const filterText = this.deviceFilterControl.value?.toLowerCase() || '';
 
     return devices
-      .filter(device => device.isConnected) // Sadece bağlı cihazları göster
-      .map(device => this.createDisplayDevice(device, currentTenant))
-      .filter((device): device is DisplayDevice => {
-        if (!device) return false;
-        // Filter by serial, branch, or game name
-        return device.serialNo.toLowerCase().includes(term) ||
-               (device.branchName?.toLowerCase().includes(term) ?? false) ||
-               (device.gameName?.toLowerCase().includes(term) ?? false);
-      })
-      .sort((a, b) => a.serialNo.localeCompare(b.serialNo)); // Optional: sort the list
+      .filter(device => device.isConnected) // Sadece bağlı olanları filtrele
+      .map(device => this.createDisplayDevice(device)) // Her birini DisplayDevice'a dönüştür
+      .filter(device => {
+        // Filtre metnine göre ara
+        if (!filterText) return true;
+        return (
+          device.serialNo.toLowerCase().includes(filterText) ||
+          device.branchName.toLowerCase().includes(filterText) ||
+          device.branchCode.toLowerCase().includes(filterText)
+        );
+      });
   });
-  
-  // 2. Computed signal to filter the topics of the *selected* device
-  public filteredTopics = computed(() => {
-    const selected = this.selectedDevice();
-    const term = this.topicFilterTerm()?.toLowerCase() || '';
-    
-    if (!selected) return [];
 
-    return selected.topics.filter((topic: MqttTopic) => 
-        topic.name.toLowerCase().includes(term) ||
-        topic.type.toLowerCase().includes(term) ||
-        topic.description.toLowerCase().includes(term)
+  /**
+   * Seçili olan cihaza ait topic listesini filtreleyen hesaplanmış sinyal.
+   */
+  public readonly filteredTopics = computed<MqttTopic[]>(() => {
+    const selected = this.selectedDevice();
+    const filterText = this.topicFilterControl.value?.toLowerCase() || '';
+
+    if (!selected) return [];
+    if (!filterText) return selected.topics;
+
+    return selected.topics.filter(
+      topic =>
+        topic.name.toLowerCase().includes(filterText) ||
+        topic.type.toLowerCase().includes(filterText) ||
+        topic.description.toLowerCase().includes(filterText)
     );
   });
 
-  /**
-   * Creates a display-ready device object, including its MQTT topics.
-   */
-  private createDisplayDevice(device: DeviceData, tenant: string): DisplayDevice {
-    const displayId = `${device.branchName || 'N/A'} - ${device.gameName || 'N/A'} (${device.serialNo})`;
-    const topics = this.mqttTopicService.generateTopicsForDevice(device.serialNo, tenant);
-    return { ...device, displayId, topics };
+  constructor() {
+    // Form kontrollerindeki değişiklikleri dinleyerek sinyallerin yeniden hesaplanmasını tetikle
+    this.deviceFilterControl.valueChanges.subscribe(() => this.filteredDevices());
+    this.topicFilterControl.valueChanges.subscribe(() => this.filteredTopics());
+
+    // Başlangıçta cihaz listesini yenilemek için bir `effect` kullanalım
+    effect(() => {
+      this.deviceDataService.refreshDevices();
+    });
   }
 
   /**
-   * Sets the selected device in the DeviceStateService.
-   * This now implicitly makes the device's topics available for display.
+   * Bir cihaz seçildiğinde çağrılır ve seçili cihaz durumunu günceller.
+   * @param device Seçilen DisplayDevice nesnesi.
    */
-  selectDevice(device: DisplayDevice): void {
-    if (this.selectedDevice()?.serialNo !== device.serialNo) {
-      this.deviceStateService.selectedDevice$.next(device);
-      this.topicFilterControl.setValue(''); // Reset topic filter on new device selection
-    }
+  public selectDevice(device: DisplayDevice): void {
+    this.deviceStateService.setSelectedDevice(device);
+    // Topic filtresini temizle
+    this.topicFilterControl.setValue('');
   }
 
   /**
-   * Clears the current device selection.
+   * Bir DeviceData nesnesini, topic listesi eklenmiş bir DisplayDevice nesnesine dönüştürür.
+   * @param device Dönüştürülecek cihaz verisi.
+   * @returns Topic listesi eklenmiş DisplayDevice nesnesi.
    */
-  clearSelection(): void {
-    this.deviceStateService.selectedDevice$.next(null);
+  private createDisplayDevice(device: DeviceData): DisplayDevice {
+    const topics = this.mqttTopicService.generateTopicsForDevice(
+      device.serialNo,
+      this.tenant()
+    );
+    return { ...device, topics };
   }
 
-  // Helper for tracking in ngFor to improve performance
-  trackBySerialNo(index: number, device: DisplayDevice): string {
+  /**
+   * Angular'ın `for` döngüsünde performansı artırmak için kullanılır.
+   * @param index Döngüdeki elemanın indeksi.
+   * @param device Döngüdeki cihaz nesnesi.
+   * @returns Cihazın benzersiz seri numarası.
+   */
+  public trackByDevice(index: number, device: DisplayDevice): string {
     return device.serialNo;
   }
-}
 
+  /**
+   * Angular'ın `for` döngüsünde performansı artırmak için kullanılır.
+   * @param index Döngüdeki elemanın indeksi.
+   * @param topic Döngüdeki topic nesnesi.
+   * @returns Topic'in benzersiz adı.
+   */
+  public trackByTopic(index: number, topic: MqttTopic): string {
+    return topic.name;
+  }
+}

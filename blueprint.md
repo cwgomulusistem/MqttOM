@@ -14,6 +14,24 @@ Bu proje, yüzlerce IoT cihazını gerçek zamanlı olarak izlememize, onlarla e
 
 ---
 
+## **Güncel Plan: Kodun Yeniden Yapılandırılması ve Geliştirilmesi**
+
+**Amaç:** Kod kalitesini artırmak, `device-list` bileşenini daha modüler hale getirmek ve kullanıcı arayüzünü daha işlevsel kılmak. Bu yeniden yapılandırma, `isConnected: true` olan cihazların listelenmesini, bu cihazlara ait dinamik MQTT topic'lerinin `tenant` kimliği ile oluşturulmasını ve hem cihazlar hem de topic'ler için ayrı ayrı filtreleme yapılmasını sağlayacaktır.
+
+**Adımlar:**
+
+1.  **`auth.service.ts` Oluşturulması:** Kullanıcı `tenant` kimliğini simüle eden ve uygulama genelinde erişilebilir kılan bir servis oluşturulacak.
+2.  **`mqtt-topic.service.ts` Oluşturulması:** Cihaza ve `tenant`'a özel MQTT topic'lerini dinamik olarak üretme mantığını barındıran yeni bir servis eklenecek.
+3.  **`device-list.component`'in Yeniden Yazılması:**
+    *   Bileşen, yeni oluşturulan servisleri kullanacak.
+    *   `filteredDevices` sinyali, artık sadece bağlı cihazları gösterecek ve her cihaz için topic listesini de içerecek şekilde güncellenecek.
+    *   `filteredTopics` adında yeni bir hesaplanmış sinyal eklenerek seçili cihaza ait topic'lerin filtrelenmesi sağlanacak.
+4.  **Arayüzün (HTML/SCSS) Modernizasyonu:**
+    *   Ekran ikiye bölünecek: Sol panelde filtrelenebilir cihaz listesi, sağ panelde ise seçilen cihaza ait filtrelenebilir topic listesi yer alacak.
+    *   Topic'ler, türlerine (`rpc`, `general` vb.) göre `mat-chip` bileşeni ve özel stillerle görsel olarak etiketlenecek.
+
+---
+
 ## **Tamamlanan Planlar**
 
 ### Faz 1: Proje İskeletinin Kurulması ve Çekirdek Servislerin Oluşturulması

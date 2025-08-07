@@ -1,71 +1,92 @@
 <div class="container">
-  <!-- Left Side: Device List -->
-  <div class="device-list-panel">
-    <mat-form-field appearance="fill">
-      <mat-label>Filter Connected Devices</mat-label>
-      <input matInput [formControl]="deviceFilterControl" placeholder="Filter by Serial, Branch, Game...">
+  <!-- Sol Panel: Cihaz Listesi -->
+  <div class="panel device-list-panel">
+    <mat-form-field appearance="outline">
+      <mat-label>Cihaz Ara...</mat-label>
+      <input
+        matInput
+        placeholder="Seri no, şube adı veya kodu"
+        [formControl]="deviceFilterControl"
+      />
       <mat-icon matSuffix>search</mat-icon>
     </mat-form-field>
 
+    @if (filteredDevices().length > 0) {
     <mat-list role="list">
-      @if (filteredDevices().length === 0) {
-        <div class="empty-state">
-          No connected devices found.
+      @for (device of filteredDevices(); track trackByDevice) {
+      <mat-list-item
+        role="listitem"
+        (click)="selectDevice(device)"
+        [class.selected]="selectedDevice()?.serialNo === device.serialNo"
+        matTooltip="Cihaz detaylarını ve MQTT topic'lerini görmek için tıklayın."
+      >
+        <div class="device-info">
+          <span class="serial-no">{{ device.serialNo }}</span>
+          <span class="branch-name">{{ device.branchName }}</span>
         </div>
-      }
-      @for (device of filteredDevices(); track trackBySerialNo($index, device)) {
-        <mat-list-item
-          (click)="selectDevice(device)"
-          [class.selected]="device.serialNo === selectedDevice()?.serialNo"
-          role="listitem">
-          <mat-icon matListItemIcon>developer_board</mat-icon>
-          <div matListItemTitle>{{ device.serialNo }}</div>
-          <div matListItemLine>{{ device.branchName }} - {{ device.gameName }}</div>
-        </mat-list-item>
+        <div class="device-status">
+          <mat-icon
+            [style.color]="device.isConnected ? '#4CAF50' : '#F44336'"
+          >
+            {{ device.isConnected ? "power" : "power_off" }}
+          </mat-icon>
+        </div>
+      </mat-list-item>
       }
     </mat-list>
+    } @else {
+    <div class="empty-state">
+      <mat-icon>devices_other</mat-icon>
+      <p>Filtreyle eşleşen bağlı bir cihaz bulunamadı.</p>
+    </div>
+    }
   </div>
 
-  <!-- Right Side: Topic Details for Selected Device -->
-  <div class="topic-details-panel">
-    @if (selectedDevice(); as selected) {
-      <div class="topic-header">
-        <h2>Topics for {{ selected.serialNo }}</h2>
-        <button mat-icon-button (click)="clearSelection()" aria-label="Clear selection">
-           <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <mat-form-field appearance="fill">
-        <mat-label>Filter Topics</mat-label>
-        <input matInput [formControl]="topicFilterControl" placeholder="Filter by name, type (rpc, general)...">
-        <mat-icon matSuffix>filter_list</mat-icon>
+  <!-- Sağ Panel: Topic Detayları -->
+  <div class="panel topic-details-panel">
+    @if (selectedDevice(); as device) {
+    <div class="topic-header">
+      <h2>
+        <mat-icon>hub</mat-icon>
+        <span>Topic'ler: {{ device.serialNo }}</span>
+      </h2>
+      <mat-form-field appearance="outline">
+        <mat-label>Topic Ara...</mat-label>
+        <input
+          matInput
+          placeholder="Topic adı, türü veya açıklama"
+          [formControl]="topicFilterControl"
+        />
+        <mat-icon matSuffix>search</mat-icon>
       </mat-form-field>
+    </div>
 
-      <mat-list role="list">
-        @if (filteredTopics().length === 0) {
-            <div class="empty-state">
-                No topics match your filter.
-            </div>
-        }
-        @for (topic of filteredTopics(); track topic.name) {
-            <mat-list-item class="topic-item" role="listitem">
-                <div matListItemTitle class="topic-name">{{ topic.name }}</div>
-                <div matListItemLine class="topic-description">{{ topic.description }}</div>
-                 <div matListItemMeta>
-                    <mat-chip-listbox>
-                        <mat-chip [ngClass]="topic.type" disabled>{{ topic.type }}</mat-chip>
-                    </mat-chip-listbox>
-                </div>
-            </mat-list-item>
-        }
-      </mat-list>
-
-    } @else {
-      <div class="empty-state centered">
-        <mat-icon>touch_app</mat-icon>
-        <p>Select a device from the list to view its MQTT topics.</p>
+    <div class="topic-list">
+      @for (topic of filteredTopics(); track trackByTopic) {
+      <div class="topic-item" [matTooltip]="topic.description">
+        <span class="topic-name">{{ topic.name }}</span>
+        <mat-chip-set>
+          <mat-chip [ngClass]="'chip-' + topic.type">{{
+            topic.type
+          }}</mat-chip>
+        </mat-chip-set>
       </div>
+      } @empty {
+      <div class="empty-state">
+        <mat-icon>filter_list_off</mat-icon>
+        <p>Aradığınız kriterlere uygun topic bulunamadı.</p>
+      </div>
+      }
+    </div>
+    } @else {
+    <div class="empty-state placeholder">
+      <mat-icon>touch_app</mat-icon>
+      <h2>Detayları Görmek İçin Bir Cihaz Seçin</h2>
+      <p>
+        Sol taraftaki listeden bir cihaz seçerek o cihaza ait tüm MQTT
+        topic'lerini burada görebilirsiniz.
+      </p>
+    </div>
     }
   </div>
 </div>
