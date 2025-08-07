@@ -14,53 +14,30 @@ Bu proje, yüzlerce IoT cihazını gerçek zamanlı olarak izlememize, onlarla e
 
 ---
 
-## **Güncel Plan: Kodun Yeniden Yapılandırılması ve Geliştirilmesi**
+## **Güncel Plan: Topic Monitörünün Yeniden Yapılandırılması**
 
-**Amaç:** Kod kalitesini artırmak, `device-list` bileşenini daha modüler hale getirmek ve kullanıcı arayüzünü daha işlevsel kılmak. Bu yeniden yapılandırma, `isConnected: true` olan cihazların listelenmesini, bu cihazlara ait dinamik MQTT topic'lerinin `tenant` kimliği ile oluşturulmasını ve hem cihazlar hem de topic'ler için ayrı ayrı filtreleme yapılmasını sağlayacaktır.
+**Amaç:** `TopicMonitorComponent`'i, `DeviceListComponent`'te yapılan son değişikliklerle uyumlu hale getirmek ve kullanıcı deneyimini iyileştirmek. Yeni yapıda, bir cihaz seçildiğinde o cihaza ait topic'ler monitörde listelenecek, kullanıcı bir topic seçtiğinde ise sadece o topic'e ait mesajlar gerçek zamanlı olarak görüntülenecektir.
 
 **Adımlar:**
 
-1.  **`auth.service.ts` Oluşturulması:** Kullanıcı `tenant` kimliğini simüle eden ve uygulama genelinde erişilebilir kılan bir servis oluşturulacak.
-2.  **`mqtt-topic.service.ts` Oluşturulması:** Cihaza ve `tenant`'a özel MQTT topic'lerini dinamik olarak üretme mantığını barındıran yeni bir servis eklenecek.
-3.  **`device-list.component`'in Yeniden Yazılması:**
-    *   Bileşen, yeni oluşturulan servisleri kullanacak.
-    *   `filteredDevices` sinyali, artık sadece bağlı cihazları gösterecek ve her cihaz için topic listesini de içerecek şekilde güncellenecek.
-    *   `filteredTopics` adında yeni bir hesaplanmış sinyal eklenerek seçili cihaza ait topic'lerin filtrelenmesi sağlanacak.
-4.  **Arayüzün (HTML/SCSS) Modernizasyonu:**
-    *   Ekran ikiye bölünecek: Sol panelde filtrelenebilir cihaz listesi, sağ panelde ise seçilen cihaza ait filtrelenebilir topic listesi yer alacak.
-    *   Topic'ler, türlerine (`rpc`, `general` vb.) göre `mat-chip` bileşeni ve özel stillerle görsel olarak etiketlenecek.
+1.  **`topic-monitor.component.ts`'in Yeniden Yazılması:**
+    *   Bileşen artık kendi topic listesini oluşturmayacak; bunun yerine `DeviceStateService`'ten gelen `selectedDevice` sinyalindeki hazır topic listesini kullanacak.
+    *   Kullanıcının seçtiği topic'i saklamak için `selectedTopic` adında bir sinyal oluşturulacak.
+    *   Seçilen topic değiştiğinde MQTT aboneliklerini yönetecek (eskiyi bırak, yeniye abone ol) bir `effect` mekanizması kurulacak.
+    *   `MqttService`'teki genel mesaj akışını `selectedTopic`'e göre filtreleyen bir `computed` sinyal oluşturulacak.
+2.  **`topic-monitor.component.html`'in Modernizasyonu:**
+    *   Arayüz, seçilen cihaza ait topic'lerin listelendiği bir alan ve bu topic'lerden birine tıklandığında mesajların gösterildiği bir monitör alanı olarak ikiye ayrılacak.
+3.  **`topic-monitor.component.scss`'in Güncellenmesi:**
+    *   Yeni arayüz düzenini destekleyen ve seçili olan topic'i vurgulayan stiller eklenecek.
 
 ---
 
 ## **Tamamlanan Planlar**
 
-### Faz 1: Proje İskeletinin Kurulması ve Çekirdek Servislerin Oluşturulması
-*   Proje iskeleti modern Angular standartlarına göre oluşturuldu.
-*   Çekirdek servisler (`MqttService`, `DeviceStateService`) tanımlandı.
-*   Temel yönlendirme ve klasör yapısı kuruldu.
+### Faz 1-5 & Kodun Yeniden Yapılandırılması
 
-### Faz 2: Bağlantı (Login) Ekranının Geliştirilmesi
-*   `LoginComponent` reaktif bir form ile oluşturuldu.
-*   `MqttService` aracılığıyla gerçek MQTT bağlantı mantığı entegre edildi.
-*   Başlangıç rotası (`/login`) ve başarılı bağlantı sonrası yönlendirme için altyapı hazırlandı.
-
-### Faz 3: Ana Panel (Dashboard) ve Cihaz Listesi
-*   `DashboardComponent` ve `DeviceListComponent` oluşturuldu.
-*   Cihaz listeleme, filtreleme ve seçme işlevselliği eklendi.
-*   `DeviceStateService` ile bileşenler arası iletişim sağlandı.
-
-### Faz 4: Topic Monitörü ve Gerçek Zamanlı Veri Akışı
-*   `TopicMonitorComponent` oluşturuldu.
-*   Seçilen cihaza göre dinamik topic üretimi ve abonelik yönetimi sağlandı.
-*   `MqttService.messageStream$` üzerinden gerçek zamanlı mesaj akışı gösterildi.
-
-### Faz 5: Yayınlama (Publisher) ve Son Dokunuşlar
-*   Kullanıcının MQTT mesajı göndermesini sağlayacak `PublisherComponent` oluşturuldu.
-*   `MqttService`'e `unsubscribeFromTopic` metodu eklendi ve entegre edildi.
-*   Gelen JSON mesajlarının okunabilirliğini artırmak için bir `PrettyJsonPipe` oluşturuldu.
-*   Tüm bileşenler ana panele entegre edildi ve genel stil iyileştirmeleri yapıldı.
+*   Proje iskeleti kuruldu, çekirdek servisler oluşturuldu, login ve dashboard bileşenleri geliştirildi.
+*   `DeviceListComponent`, servis tabanlı ve sinyal odaklı çalışacak şekilde tamamen yeniden yapılandırıldı. Arayüzü iki panelli (cihaz listesi ve topic detayları) modern bir yapıya kavuşturuldu.
 *   Tüm derleme hataları giderilerek projenin kararlı bir duruma getirilmesi sağlandı.
 
 ---
-
-**PROJE BAŞARIYLA TAMAMLANDI.**
