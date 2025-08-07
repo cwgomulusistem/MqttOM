@@ -1,59 +1,97 @@
+// device-list.component.scss
 
 :host {
-  display: flex;
-  flex-direction: column;
+  display: block;
   height: 100%;
 }
 
-.list-container {
+.container {
+  display: flex;
+  height: 100%;
+  gap: 1rem;
+}
+
+.device-list-panel {
+  flex: 0 0 400px; /* Fixed width for the device list */
   display: flex;
   flex-direction: column;
-  height: 100%;
-}
-
-.list-header {
-  padding: 1rem 1rem 0.5rem;
-  border-bottom: 1px solid #e0e0e0;
-
-  h3 {
-    margin: 0;
-    font-size: 1.2rem;
-    font-weight: 500;
-  }
-}
-
-.filter-field {
-  width: calc(100% - 2rem);
-  margin: 1rem;
-}
-
-.device-list {
-  flex: 1;
   overflow-y: auto;
-  padding-top: 0 !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.12);
+  padding: 1rem;
 }
 
-a[mat-list-item] {
-  cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
+.topic-details-panel {
+  flex: 1 1 auto; /* Takes up remaining space */
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
 
-  &:hover {
-    background-color: #f5f5f5;
-  }
+mat-form-field {
+  width: 100%;
+}
 
-  &.active {
-    background-color: #e8f0fe; // A light blue color
-    font-weight: 500;
-    color: #1a73e8; // Google's blue
+.mat-list-item.selected {
+  background-color: rgba(63, 81, 181, 0.1); // Using Material primary color with opacity
+  border-left: 4px solid #3f51b5;
+}
 
-    .mat-icon {
-      color: #1a73e8;
+.empty-state {
+  padding: 2rem;
+  color: #777;
+  text-align: center;
+
+  &.centered {
+    margin: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 1rem;
     }
   }
 }
 
-.empty-state {
-    padding: 2rem;
-    text-align: center;
-    color: #757575;
+.topic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+
+    h2 {
+        margin: 0;
+    }
+}
+
+.topic-item {
+    .topic-name {
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: bold;
+    }
+    .topic-description {
+        font-size: 0.9em;
+        color: #555;
+    }
+}
+
+// Style chips based on topic type
+.mat-mdc-chip {
+    &.rpc {
+        background-color: #e8f0fe; // Light blue
+        color: #1a73e8;
+    }
+    &.device-specific {
+        background-color: #e6f4ea; // Light green
+        color: #1e8e3e;
+    }
+    &.general {
+        background-color: #fce8e6; // Light red
+        color: #d93025;
+    }
 }

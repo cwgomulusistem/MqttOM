@@ -1,35 +1,71 @@
+<div class="container">
+  <!-- Left Side: Device List -->
+  <div class="device-list-panel">
+    <mat-form-field appearance="fill">
+      <mat-label>Filter Connected Devices</mat-label>
+      <input matInput [formControl]="deviceFilterControl" placeholder="Filter by Serial, Branch, Game...">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
 
-<div class="list-container">
-  <div class="list-header">
-    <h3>Connected Devices</h3>
+    <mat-list role="list">
+      @if (filteredDevices().length === 0) {
+        <div class="empty-state">
+          No connected devices found.
+        </div>
+      }
+      @for (device of filteredDevices(); track trackBySerialNo($index, device)) {
+        <mat-list-item
+          (click)="selectDevice(device)"
+          [class.selected]="device.serialNo === selectedDevice()?.serialNo"
+          role="listitem">
+          <mat-icon matListItemIcon>developer_board</mat-icon>
+          <div matListItemTitle>{{ device.serialNo }}</div>
+          <div matListItemLine>{{ device.branchName }} - {{ device.gameName }}</div>
+        </mat-list-item>
+      }
+    </mat-list>
   </div>
 
-  <!-- Filter Input -->
-  <mat-form-field appearance="outline" class="filter-field">
-    <mat-label>Filter by Module Serial</mat-label>
-    <input matInput [formControl]="filterControl" placeholder="Search...">
-    <mat-icon matSuffix>search</mat-icon>
-  </mat-form-field>
+  <!-- Right Side: Topic Details for Selected Device -->
+  <div class="topic-details-panel">
+    @if (selectedDevice(); as selected) {
+      <div class="topic-header">
+        <h2>Topics for {{ selected.serialNo }}</h2>
+        <button mat-icon-button (click)="clearSelection()" aria-label="Clear selection">
+           <mat-icon>close</mat-icon>
+        </button>
+      </div>
 
-  <!-- Device List -->
-  <mat-nav-list class="device-list">
-    @for (device of filteredDevices(); track device.serialNo) {
-      <a mat-list-item 
-         (click)="selectDevice(device)" 
-         [class.active]="selectedDevice()?.serialNo === device.serialNo">
-        <mat-icon matListItemIcon>memory</mat-icon>
-        <div matListItemTitle>{{ device.displayId }}</div>
-        <div matListItemLine>{{ device.serialNo }} - {{ device.ipAddress }}</div>
-      </a>
-    } @empty {
-      <div class="empty-state">
-         @if (devices().length === 0) {
-            <p>No devices loaded. Please upload a JSON file.</p>
-         } @else {
-            <p>No devices match your filter.</p>
-         }
+      <mat-form-field appearance="fill">
+        <mat-label>Filter Topics</mat-label>
+        <input matInput [formControl]="topicFilterControl" placeholder="Filter by name, type (rpc, general)...">
+        <mat-icon matSuffix>filter_list</mat-icon>
+      </mat-form-field>
+
+      <mat-list role="list">
+        @if (filteredTopics().length === 0) {
+            <div class="empty-state">
+                No topics match your filter.
+            </div>
+        }
+        @for (topic of filteredTopics(); track topic.name) {
+            <mat-list-item class="topic-item" role="listitem">
+                <div matListItemTitle class="topic-name">{{ topic.name }}</div>
+                <div matListItemLine class="topic-description">{{ topic.description }}</div>
+                 <div matListItemMeta>
+                    <mat-chip-listbox>
+                        <mat-chip [ngClass]="topic.type" disabled>{{ topic.type }}</mat-chip>
+                    </mat-chip-listbox>
+                </div>
+            </mat-list-item>
+        }
+      </mat-list>
+
+    } @else {
+      <div class="empty-state centered">
+        <mat-icon>touch_app</mat-icon>
+        <p>Select a device from the list to view its MQTT topics.</p>
       </div>
     }
-  </mat-nav-list>
+  </div>
 </div>
-

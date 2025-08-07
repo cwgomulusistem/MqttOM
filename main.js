@@ -96,7 +96,8 @@ ipcMain.on('save-credentials', (event, credentials) => {
 
 // MQTT Broker'a bağlanma isteği
 ipcMain.handle('mqtt-connect', async (event, options) => {
-  console.log('Bağlantı isteği alındı:', options);
+  const { password, ...optionsWithoutPassword } = options; // Şifreyi loglamadan çıkar
+  console.log('Bağlantı isteği alındı:', optionsWithoutPassword);
   try {
     const protocol = options.protocol || 'ws';
     const brokerUrl = `${protocol}://${options.host}:${options.port}`;

@@ -14,6 +14,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 
 // Core Services and Components
 import { DeviceStateService } from '../../../../core/services/device-state.service';
@@ -26,6 +27,12 @@ interface MonitoredMessage {
   topic: string;
   payload: string;
   timestamp: Date;
+}
+
+interface AvailableTopic {
+  name: string;
+  qos: { qos: number };
+  category: 'module-based' | 'general';
 }
 
 @Component({
@@ -45,6 +52,7 @@ interface MonitoredMessage {
     MatProgressBarModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     PrettyJsonPipe, // Import the new pipe
   ],
 })
@@ -70,6 +78,24 @@ export class TopicMonitorComponent {
     { initialValue: '' }
   );
 
+  // Filter Control for available topics
+  public topicFilterControl = new FormControl('');
+  private topicFilterTerm = toSignal(
+    this.topicFilterControl.valueChanges.pipe(
+      startWith(''),
+      debounceTime(300),
+    ),
+    { initialValue: '' }
+  );
+
+  public topicCategoryFilterControl = new FormControl('all');
+  private topicCategoryFilter = toSignal(
+    this.topicCategoryFilterControl.valueChanges.pipe(
+      startWith('all'),
+    ),
+    { initialValue: 'all' }
+  );
+
   // Computed signal to generate topics based on the selected device and tenant
   public availableTopics = computed(() => {
     const device = this.selectedDevice();
@@ -78,30 +104,45 @@ export class TopicMonitorComponent {
     if (!device || !tenant) return [];
 
     const { serialNo } = device;
-    // Use serialNo for moduleSerial in topic generation
-    const moduleSerial = serialNo;
+    const moduleSerial = serialNo; // Use serialNo for moduleSerial in topic generation
 
-    // Define QoS options for subscription
     const qosOptions = { qos: 2 };
 
-    return [
-      { name: `${tenant}_${moduleSerial}.PriceChange`, qos: qosOptions },
-      { name: `MQTTnet.RPC/+/${tenant}_${moduleSerial}.StartGame`, qos: qosOptions },
-      { name: `${tenant}_${moduleSerial}.FunctionalStatusChanged`, qos: qosOptions },
-      { name: `MQTTnet.RPC/+/${tenant}_${moduleSerial}.StartGameError`, qos: qosOptions },
-      { name: `${tenant}_${moduleSerial}.ParametersChanged`, qos: qosOptions },
-      { name: `${tenant}_${moduleSerial}.ModuleDeleted`, qos: qosOptions },
-      { name: `${tenant}.NewModuleVersionCreated`, qos: qosOptions },
-      { name: `${tenant}.QrStateChanged`, qos: qosOptions },
-      { name: `${tenant}_${moduleSerial}.Log`, qos: qosOptions },
-      { name: `MQTTnet.RPC/+/${tenant}_${moduleSerial}.TicketLoaded`, qos: qosOptions },
-      { name: `${tenant}_${moduleSerial}.ModuleReset`, qos: qosOptions },
-      { name: `${tenant}_${moduleSerial}.Log/response`, qos: qosOptions },
-      // Control topics (if needed, adjust as per your application logic)
-      { name: `${tenant}_${moduleSerial}.StartGame`, qos: qosOptions },
-      { name: `${tenant}_${moduleSerial}.StartGameError`, qos: qosOptions },
-      { name: `${tenant}_${moduleSerial}.TicketLoaded`, qos: qosOptions },
+    const moduleBasedTopics: AvailableTopic[] = [
+      { name: `${tenant}_${moduleSerial}.PriceChange`, qos: qosOptions, category: 'module-based' },
+      { name: `MQTTnet.RPC/+/${tenant}_${moduleSerial}.StartGame`, qos: qosOptions, category: 'module-based' },
+      { name: `${tenant}_${moduleSerial}.FunctionalStatusChanged`, qos: qosOptions, category: 'module-based' },
+      { name: `MQTTnet.RPC/+/${tenant}_${moduleSerial}.StartGameError`, qos: qosOptions, category: 'module-based' },
+      { name: `${tenant}_${moduleSerial}.ParametersChanged`, qos: qosOptions, category: 'module-based' },
+      { name: `${tenant}_${moduleSerial}.ModuleDeleted`, qos: qosOptions, category: 'module-based' },
+      { name: `${tenant}_${moduleSerial}.Log`, qos: qosOptions, category: 'module-based' },
+      { name: `MQTTnet.RPC/+/${tenant}_${moduleSerial}.TicketLoaded`, qos: qosOptions, category: 'module-based' },
+      { name: `${tenant}_${moduleSerial}.ModuleReset`, qos: qosOptions, category: 'module-based' },
+      { name: `${tenant}_${moduleSerial}.Log/response`, qos: qosOptions, category: 'module-based' },
+      { name: `${tenant}_${moduleSerial}.StartGame`, qos: qosOptions, category: 'module-based' },
+      { name: `${tenant}_${moduleSerial}.StartGameError`, qos: qosOptions, category: 'module-based' },
+      { name: `${tenant}_${moduleSerial}.TicketLoaded`, qos: qosOptions, category: 'module-based' },
     ];
+
+    const generalTopics: AvailableTopic[] = [
+      { name: `${tenant}.NewModuleVersionCreated`, qos: qosOptions, category: 'general' },
+      { name: `${tenant}.QrStateChanged`, qos: qosOptions, category: 'general' },
+    ];
+
+    return [...moduleBasedTopics, ...generalTopics];
+  });
+
+  // Computed signal for filtered available topics
+  public filteredAvailableTopics = computed(() => {
+    const topics = this.availableTopics();
+    const term = this.topicFilterTerm()?.toLowerCase() || '';
+    const categoryFilter = this.topicCategoryFilter();
+
+    return topics.filter(topic => {
+      const matchesCategory = categoryFilter === 'all' || topic.category === categoryFilter;
+      const matchesTerm = topic.name.toLowerCase().includes(term);
+      return matchesCategory && matchesTerm;
+    });
   });
 
   // Computed signal for filtered messages
@@ -118,6 +159,7 @@ export class TopicMonitorComponent {
   });
 
   constructor() {
+    console.log('[TopicMonitorComponent] Constructor çalıştı.');
     // Effect to handle incoming messages
     effect(() => {
       const message = this.rawMessageStream();
@@ -130,11 +172,24 @@ export class TopicMonitorComponent {
     // Effect to clear state when the selected device changes
     effect(() => {
       const device = this.selectedDevice();
+      console.log('[TopicMonitorComponent] selectedDevice değişti:', device);
       // Sadece cihaz değiştiğinde abonelikleri temizle
       if (device) {
         this.clearAllSubscriptions();
         this.clearLogs();
       }
+    });
+
+    // Log availableTopics computation
+    effect(() => {
+      const topics = this.availableTopics();
+      console.log('[TopicMonitorComponent] availableTopics hesaplandı:', topics);
+    });
+
+    // Log filteredAvailableTopics computation
+    effect(() => {
+      const filteredTopics = this.filteredAvailableTopics();
+      console.log('[TopicMonitorComponent] filteredAvailableTopics hesaplandı:', filteredTopics);
     });
   }
 
