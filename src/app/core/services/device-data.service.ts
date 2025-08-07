@@ -17,7 +17,7 @@ export interface DeviceData {
   requiredModuleVersion: string;
   currentDisplayVersion: string;
   requiredDisplayVersion: string;
-  ipAddress?: string; // Yeni eklendi
+  ipAddress?: string;
 }
 
 @Injectable({
@@ -25,17 +25,12 @@ export interface DeviceData {
 })
 export class DeviceDataService {
   public deviceData = signal<DeviceData[]>([]);
-  public currentTenant = signal<string | null>(null);
 
   constructor() {}
 
   setDeviceData(data: DeviceData[]): void {
     console.log('[DeviceDataService] setDeviceData called with:', data);
     this.deviceData.set(data);
-  }
-
-  setTenant(tenant: string): void {
-    this.currentTenant.set(tenant);
   }
 
   getDeviceBySerialNo(serialNo: string): DeviceData | undefined {
