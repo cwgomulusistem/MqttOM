@@ -13,7 +13,7 @@
 
     @if (filteredDevices().length > 0) {
     <mat-list role="list">
-      @for (device of filteredDevices(); track trackByDevice) {
+      @for (device of filteredDevices(); track device.serialNo) {
       <mat-list-item
         role="listitem"
         (click)="selectDevice(device)"
@@ -62,7 +62,7 @@
     </div>
 
     <div class="topic-list">
-      @for (topic of filteredTopics(); track trackByTopic) {
+      @for (topic of filteredTopics(); track topic.name) {
       <div class="topic-item" [matTooltip]="topic.description">
         <span class="topic-name">{{ topic.name }}</span>
         <mat-chip-set>
