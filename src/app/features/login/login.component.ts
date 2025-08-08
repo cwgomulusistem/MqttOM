@@ -18,17 +18,14 @@ import { MatIconModule } from '@angular/material/icon';
 import { MqttService } from '../../core/services/mqtt.service';
 import { CommonModule } from '@angular/common';
 import { DeviceDataService } from '../../core/services/device-data.service';
-import { AuthService } from '../../core/services/auth.service';
-
-// The 'declare global' block has been removed from here.
-// TypeScript will now automatically use the centralized definition
-// in /src/electron-api.d.ts
+import { AuthService } from '../../core/services/auth.service'; // AuthService import edildi
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  standalone: true, // Standalone component
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -48,7 +45,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   private snackBar = inject(MatSnackBar);
   private mqttService = inject(MqttService);
   private deviceDataService = inject(DeviceDataService);
-  private authService = inject(AuthService);
+  private authService = inject(AuthService); // AuthService inject edildi
 
   // State
   public connectionState$ = this.mqttService.connectionState$;

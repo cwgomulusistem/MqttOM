@@ -1,11 +1,6 @@
-import { Injectable, NgZone, inject, effect, OnDestroy } from '@angular/core';
+import { Injectable, NgZone, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { DeviceStateService } from './device-state.service';
-
-// The 'declare global' block has been removed from here.
-// TypeScript will now automatically use the centralized definition
-// in /src/electron-api.d.ts
 
 export interface MqttConfig {
   host: string;
@@ -20,42 +15,19 @@ export type MqttConnectionState = 'Disconnected' | 'Connecting' | 'Connected' | 
 @Injectable({
   providedIn: 'root',
 })
-export class MqttService implements OnDestroy {
-  private readonly zone = inject(NgZone);
-  private readonly router = inject(Router);
-  private readonly deviceStateService = inject(DeviceStateService);
+export class MqttService {
+  private zone = inject(NgZone);
+  private router = inject(Router);
 
   public connectionState$ = new BehaviorSubject<MqttConnectionState>('Disconnected');
   public messageStream$ = new Subject<{ topic: string; payload: string }>();
+  public connectedClients$ = new BehaviorSubject<any[]>([]);
 
   private cleanupFunctions: (() => void)[] = [];
-  private lastSubscribedTopics: string[] = [];
+  private activeSubscriptions: Set<string> = new Set(); // Abone olunan topic'leri takip et
 
   constructor() {
     this.setupElectronListeners();
-
-    // Effect to dynamically manage MQTT subscriptions based on the final, resolved topics
-    effect(() => {
-      if (this.connectionState$.value !== 'Connected') {
-        return; // Only manage subscriptions when connected
-      }
-
-      const newTopics = this.deviceStateService.subscribableTopics();
-      const oldTopics = this.lastSubscribedTopics;
-
-      const topicsToUnsubscribe = oldTopics.filter(t => !newTopics.includes(t));
-      const topicsToSubscribe = newTopics.filter(t => !oldTopics.includes(t));
-
-      if (topicsToUnsubscribe.length > 0) {
-        topicsToUnsubscribe.forEach(topic => this.unsubscribeFromTopic(topic));
-      }
-
-      if (topicsToSubscribe.length > 0) {
-        topicsToSubscribe.forEach(topic => this.subscribeToTopic(topic));
-      }
-
-      this.lastSubscribedTopics = newTopics;
-    });
   }
 
   private setupElectronListeners() {
@@ -64,10 +36,9 @@ export class MqttService implements OnDestroy {
         if (status === 'connected') {
           this.connectionState$.next('Connected');
           this.router.navigate(['/dashboard']);
-          // On initial connection, lastSubscribedTopics is empty, so all topics will be subscribed to.
         } else if (status === 'disconnected') {
           this.connectionState$.next('Disconnected');
-          this.lastSubscribedTopics = []; // Clear subscriptions on disconnect
+          this.activeSubscriptions.clear(); // Bağlantı kesildiğinde abonelikleri temizle
         } else if (status === 'error') {
           console.error('MQTT Error from main process:', error);
           this.connectionState$.next('Error');
@@ -77,6 +48,7 @@ export class MqttService implements OnDestroy {
 
     const cleanupMessage = window.electronAPI.on('mqtt-message', ({ topic, message }) => {
       this.zone.run(() => {
+        console.log(`[MqttService] Received message for topic: ${topic}`);
         this.messageStream$.next({ topic, payload: message });
       });
     });
@@ -99,50 +71,39 @@ export class MqttService implements OnDestroy {
 
   disconnect(): void {
     window.electronAPI.send('mqtt-disconnect');
+    this.connectionState$.next('Disconnected');
+    this.connectedClients$.next([]);
   }
 
-  private subscribeToTopic(topic: string, options: { qos: 2 } = { qos: 2 }): void {
-    console.log(`Subscribing to: ${topic}`);
-    window.electronAPI.send('mqtt-subscribe', { topic, options });
+  subscribeToTopic(topic: string, options?: { qos: number }): void {
+    if (!this.activeSubscriptions.has(topic)) {
+      window.electronAPI.send('mqtt-subscribe', { topic, options });
+      this.activeSubscriptions.add(topic);
+    }
   }
 
-  private unsubscribeFromTopic(topic: string): void {
-    console.log(`Unsubscribing from: ${topic}`);
-    window.electronAPI.send('mqtt-unsubscribe', topic);
+  unsubscribeFromTopic(topic: string): void {
+    if (this.activeSubscriptions.has(topic)) {
+      window.electronAPI.send('mqtt-unsubscribe', topic);
+      this.activeSubscriptions.delete(topic);
+    }
   }
 
-  publish(topic: string, message: string, options: any): void {
+  subscribeToTopics(topics: string[], options?: { qos: number }): void {
+    topics.forEach(topic => this.subscribeToTopic(topic, options));
+  }
+
+  unsubscribeAllTopics(): void {
+    this.activeSubscriptions.forEach(topic => this.unsubscribeFromTopic(topic));
+    this.activeSubscriptions.clear();
+  }
+
+  publish(topic: string, message: string, options?: { qos: number; retain: boolean }): void {
     window.electronAPI.send('mqtt-publish', { topic, message, options });
-  }
-
-  public topicMatches(pattern: string, topic: string): boolean {
-    if (pattern === '#' || pattern === topic) return true;
-    const patternSegments = pattern.split('/');
-    const topicSegments = topic.split('/');
-    const patternLength = patternSegments.length;
-    const topicLength = topicSegments.length;
-
-    if (patternSegments[patternLength - 1] === '#') {
-      if (topicLength < patternLength - 1) return false;
-      for (let i = 0; i < patternLength - 1; i++) {
-        if (patternSegments[i] !== '+' && patternSegments[i] !== topicSegments[i]) {
-          return false;
-        }
-      }
-      return true;
-    }
-
-    if (patternLength !== topicLength) return false;
-
-    for (let i = 0; i < patternLength; i++) {
-      if (patternSegments[i] !== '+' && patternSegments[i] !== topicSegments[i]) {
-        return false;
-      }
-    }
-    return true;
   }
 
   ngOnDestroy() {
     this.cleanupFunctions.forEach(cleanup => cleanup());
+    this.unsubscribeAllTopics(); // Servis yok edildiğinde tüm abonelikleri kaldır
   }
 }
