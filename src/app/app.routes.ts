@@ -1,7 +1,7 @@
+
 import { Routes } from '@angular/router';
 import { LoginComponent } from './features/login/login.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { TopicManagementComponent } from './features/topic-management/topic-management.component';
 
 export const routes: Routes = [
   {
@@ -12,10 +12,6 @@ export const routes: Routes = [
     path: 'dashboard',
     component: DashboardComponent,
     // We can add a canActivate guard here later to protect this route
-  },
-  {
-    path: 'topic-management',
-    component: TopicManagementComponent,
   },
   {
     path: '',

@@ -20,6 +20,18 @@ import { CommonModule } from '@angular/common';
 import { DeviceDataService } from '../../core/services/device-data.service';
 import { AuthService } from '../../core/services/auth.service'; // AuthService import edildi
 
+declare global {
+  interface Window {
+    electronAPI: {
+      send: (channel: string, data?: any) => void;
+      invoke: (channel: string, data?: any) => Promise<any>;
+      on: (channel: string, func: (...args: any[]) => void) => () => void;
+      loadCredentials: () => Promise<any>;
+      saveCredentials: (credentials: any) => void;
+    };
+  }
+}
+
 @Component({
   selector: 'app-login',
   templateUrl: './login.component.html',

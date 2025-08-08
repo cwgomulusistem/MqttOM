@@ -1,9 +1,24 @@
+
 import { Injectable, NgZone, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Subject } from 'rxjs';
 
+// Electron API'sini pencere nesnesinde tanımla
+// Bu, preload.js'de tanımlanan API ile eşleşmelidir
+declare global {
+  interface Window {
+    electronAPI: {
+      send: (channel: string, data?: any) => void;
+      invoke: (channel: string, data?: any) => Promise<any>;
+      on: (channel: string, func: (...args: any[]) => void) => () => void;
+      loadCredentials: () => Promise<any>; // Yeni eklendi
+      saveCredentials: (credentials: any) => void; // Yeni eklendi
+    };
+  }
+}
+
 export interface MqttConfig {
-  host: string;
+  host: string; // Electron tarafı `host` bekliyor
   port: number;
   username?: string;
   password?: string;
@@ -24,21 +39,26 @@ export class MqttService {
   public connectedClients$ = new BehaviorSubject<any[]>([]);
 
   private cleanupFunctions: (() => void)[] = [];
-  private activeSubscriptions: Set<string> = new Set(); // Abone olunan topic'leri takip et
 
   constructor() {
     this.setupElectronListeners();
   }
 
   private setupElectronListeners() {
+    // MQTT durum güncellemelerini dinle
     const cleanupStatus = window.electronAPI.on('mqtt-status', ({ status, error }) => {
+      console.log(`[MqttService] Electron'dan durum alındı: ${status}`);
       this.zone.run(() => {
         if (status === 'connected') {
+          console.log('[MqttService] Durum: Connected. Yönlendirme denenecek...');
           this.connectionState$.next('Connected');
           this.router.navigate(['/dashboard']);
+          console.log('[MqttService] /dashboard adresine yönlendirildi.');
+          // Simüle edilmiş istemci listesi kaldırıldı.
+          this.connectedClients$.next([]); // Listeyi boşalt
         } else if (status === 'disconnected') {
           this.connectionState$.next('Disconnected');
-          this.activeSubscriptions.clear(); // Bağlantı kesildiğinde abonelikleri temizle
+          // this.router.navigate(['/login']); // Geçici olarak devre dışı bırakıldı
         } else if (status === 'error') {
           console.error('MQTT Error from main process:', error);
           this.connectionState$.next('Error');
@@ -46,9 +66,9 @@ export class MqttService {
       });
     });
 
+    // Gelen MQTT mesajlarını dinle
     const cleanupMessage = window.electronAPI.on('mqtt-message', ({ topic, message }) => {
       this.zone.run(() => {
-        console.log(`[MqttService] Received message for topic: ${topic}`);
         this.messageStream$.next({ topic, payload: message });
       });
     });
@@ -76,34 +96,20 @@ export class MqttService {
   }
 
   subscribeToTopic(topic: string, options?: { qos: number }): void {
-    if (!this.activeSubscriptions.has(topic)) {
-      window.electronAPI.send('mqtt-subscribe', { topic, options });
-      this.activeSubscriptions.add(topic);
-    }
+    window.electronAPI.send('mqtt-subscribe', { topic, options });
   }
 
   unsubscribeFromTopic(topic: string): void {
-    if (this.activeSubscriptions.has(topic)) {
-      window.electronAPI.send('mqtt-unsubscribe', topic);
-      this.activeSubscriptions.delete(topic);
-    }
+    window.electronAPI.send('mqtt-unsubscribe', topic);
   }
 
-  subscribeToTopics(topics: string[], options?: { qos: number }): void {
-    topics.forEach(topic => this.subscribeToTopic(topic, options));
-  }
-
-  unsubscribeAllTopics(): void {
-    this.activeSubscriptions.forEach(topic => this.unsubscribeFromTopic(topic));
-    this.activeSubscriptions.clear();
-  }
-
-  publish(topic: string, message: string, options?: { qos: number; retain: boolean }): void {
+  publish(topic: string, message: string, options: any): void {
     window.electronAPI.send('mqtt-publish', { topic, message, options });
   }
 
+  // Bileşen yok edildiğinde listener'ları temizle
   ngOnDestroy() {
     this.cleanupFunctions.forEach(cleanup => cleanup());
-    this.unsubscribeAllTopics(); // Servis yok edildiğinde tüm abonelikleri kaldır
   }
 }
+
