@@ -7,8 +7,7 @@
     "types": []
   },
   "include": [
-    "src/**/*.ts",
-    "src/electron-api.d.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "src/**/*.spec.ts"

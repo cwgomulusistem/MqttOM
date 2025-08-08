@@ -19,11 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.removeListener(channel, subscription);
     };
   },
-  // Kimlik Bilgileri
+  // Kimlik bilgilerini yükleme
   loadCredentials: () => ipcRenderer.invoke('load-credentials'),
+  // Kimlik bilgilerini kaydetme
   saveCredentials: (credentials) => ipcRenderer.send('save-credentials', credentials),
-
-  // MQTT Topic'leri
-  loadTopics: () => ipcRenderer.invoke('load-topics'),
-  saveTopics: (topics) => ipcRenderer.send('save-topics', topics),
 });

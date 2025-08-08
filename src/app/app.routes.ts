@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 import { LoginComponent } from './features/login/login.component';
 import { DashboardComponent } from './features/dashboard/dashboard.component';
-import { TopicManagementComponent } from './features/topic-management/topic-management.component';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -11,19 +11,24 @@ export const routes: Routes = [
   {
     path: 'dashboard',
     component: DashboardComponent,
-    // We can add a canActivate guard here later to protect this route
+    canActivate: [authGuard], // Protect this route
   },
   {
-    path: 'topic-management',
-    component: TopicManagementComponent,
+    path: 'settings',
+    // Lazy load the settings component for better performance
+    loadComponent: () =>
+      import('./features/settings/settings.component').then(
+        (m) => m.SettingsComponent
+      ),
+    canActivate: [authGuard], // Also protect settings
   },
   {
     path: '',
-    redirectTo: '/login',
+    redirectTo: '/login', // Default to login
     pathMatch: 'full',
   },
   {
     path: '**',
-    redirectTo: '/login' // Redirect any unknown paths to login
-  }
+    redirectTo: '/login', // Redirect unknown paths to login
+  },
 ];

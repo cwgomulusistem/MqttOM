@@ -126,7 +126,7 @@
   .message-entry {
     display: flex;
     gap: 16px;
-    margin-bottom: 4px; /* GÜNCELLENDİ: Satırlar arası boşluk azaltıldı */
+    margin-bottom: 12px;
     align-items: flex-start;
   }
 
@@ -141,30 +141,32 @@
     white-space: pre-wrap;
     word-break: break-all;
     background-color: #333;
-    padding: 2px 4px; /* GÜNCELLENDİ: Yazı içi boşluk azaltıldı */
+    padding: 8px;
     border-radius: 4px;
     font-size: 0.85rem;
-    color: #81d4fa;
+    color: #81d4fa; // Light blue for payload
   }
 }
 
-/* Chip Renkleri */
+/* Chip Renkleri (Tekrar) */
 .mat-chip {
   color: white !important;
   font-weight: 500 !important;
 }
+
 .chip-rpc {
-  background-color: #1976d2 !important;
+  background-color: #1976d2 !important; /* Mavi */
 }
 .chip-device-specific {
-  background-color: #0097a7 !important;
+  background-color: #0097a7 !important; /* Cyan */
 }
 .chip-telemetry {
-  background-color: #388e3c !important;
+  background-color: #388e3c !important; /* Yeşil */
 }
 .chip-general {
-  background-color: #d84315 !important;
+  background-color: #d84315 !important; /* Turuncu */
 }
+
 
 /* Genel Boş Durum Stilleri */
 .empty-state, .empty-state-full-page {

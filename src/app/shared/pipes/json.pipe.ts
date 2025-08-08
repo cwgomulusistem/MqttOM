@@ -1,3 +1,4 @@
+
 import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
@@ -16,7 +17,7 @@ export class PrettyJsonPipe implements PipeTransform {
     }
     try {
       const jsonObject = JSON.parse(value);
-      return JSON.stringify(jsonObject, null, 0); // 0 spaces for indentation
+      return JSON.stringify(jsonObject, null, 2); // 2 spaces for indentation
     } catch (e) {
       // If parsing fails, return the original string
       return value;
