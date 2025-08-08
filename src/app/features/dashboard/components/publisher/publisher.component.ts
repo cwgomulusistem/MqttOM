@@ -1,5 +1,4 @@
-
-import { ChangeDetectionStrategy, Component, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -17,7 +16,8 @@ import { MatIconModule } from '@angular/material/icon';
 // Core Services
 import { MqttService } from '../../../../core/services/mqtt.service';
 import { DeviceStateService } from '../../../../core/services/device-state.service';
-
+import { MqttTopic, MqttTopicService } from '../../../../core/services/mqtt-topic.service';
+import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
   selector: 'app-publisher',
@@ -43,28 +43,54 @@ export class PublisherComponent {
   private mqttService = inject(MqttService);
   private deviceStateService = inject(DeviceStateService);
   private snackBar = inject(MatSnackBar);
+  private mqttTopicService = inject(MqttTopicService); // Yeni
+  private authService = inject(AuthService); // Yeni
 
   // State
   public selectedDevice = toSignal(this.deviceStateService.selectedDevice$);
+  public availableTopicsForPublish = signal<MqttTopic[]>([]); // Yeni
 
   // Form
   public publishForm = this.fb.group({
-    topic: ['', [Validators.required]],
-    payload: ['{}', [Validators.required]],
+    selectedTopic: [<MqttTopic | null>(null), [Validators.required]], // Topic nesnesini tutacak
+    payload: ['', [Validators.required]],
     qos: [0, [Validators.required]],
     retain: [false, [Validators.required]],
   });
 
+  // Varsayılan Payload
+  private defaultPayload = {
+    "readSpeacilValues": 0,
+    "readSPIFFS": 0,
+    "printVerbose": 0,
+    "deleteVersions": 0,
+    "deleteSPIFFS": 0,
+    "debugMode": 0
+  };
+
   constructor() {
-    // Effect to auto-fill the topic when a new device is selected
+    // Cihaz seçimi değiştiğinde topic'leri ve payload'u güncelle
     effect(() => {
       const device = this.selectedDevice();
-      if (device) {
-        // Suggest a default topic, e.g., the log topic for the selected device
-        const suggestedTopic = `${device.tenant}_${device.moduleSerial}.Log`;
-        this.publishForm.get('topic')?.setValue(suggestedTopic);
+      const tenant = this.authService.tenant();
+
+      if (device && tenant) {
+        // Cihaza özel topic'leri oluştur
+        const generatedTopics = this.mqttTopicService.generateTopicsForDevice(device.serialNo, tenant);
+        this.availableTopicsForPublish.set(generatedTopics);
+
+        // Varsayılan payload'u ayarla
+        this.publishForm.get('payload')?.setValue(JSON.stringify(this.defaultPayload, null, 2));
+
+        // Eğer seçili bir topic varsa ve yeni listede yoksa sıfırla
+        const currentSelectedTopic = this.publishForm.get('selectedTopic')?.value;
+        if (currentSelectedTopic && !generatedTopics.some(t => t.id === currentSelectedTopic.id)) {
+          this.publishForm.get('selectedTopic')?.setValue(null);
+        }
       } else {
-        this.publishForm.get('topic')?.setValue('');
+        this.availableTopicsForPublish.set([]);
+        this.publishForm.get('payload')?.setValue('');
+        this.publishForm.get('selectedTopic')?.setValue(null);
       }
     });
   }
@@ -74,20 +100,22 @@ export class PublisherComponent {
    */
   publishMessage(): void {
     if (this.publishForm.valid) {
-      const { topic, payload, qos, retain } = this.publishForm.getRawValue();
-      
-      this.mqttService.publish(topic!, payload!, { 
-        qos: qos as (0 | 1 | 2), 
-        retain: retain! 
-      });
+      const { selectedTopic, payload, qos, retain } = this.publishForm.getRawValue();
 
-      this.snackBar.open(`Message published to ${topic}`, 'Close', {
-        duration: 3000,
-      });
+      if (selectedTopic) {
+        this.mqttService.publish(selectedTopic.name, payload!, {
+          qos: qos as (0 | 1 | 2),
+          retain: retain!
+        });
+
+        this.snackBar.open(`Message published to ${selectedTopic.name}`, 'Close', {
+          duration: 3000,
+        });
+      }
     }
   }
 
-   /**
+  /**
    * Validates if the payload is a valid JSON.
    * @returns True if the payload is not valid JSON, otherwise false.
    */
@@ -100,5 +128,13 @@ export class PublisherComponent {
     } catch (e) {
       return true;
     }
+  }
+
+  /**
+   * Compares two MqttTopic objects for equality based on their 'id' property.
+   * Used by mat-select's [compareWith] input.
+   */
+  compareTopics(t1: MqttTopic, t2: MqttTopic): boolean {
+    return t1 && t2 ? t1.id === t2.id : t1 === t2;
   }
 }

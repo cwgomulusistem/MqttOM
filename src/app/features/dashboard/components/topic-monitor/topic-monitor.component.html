@@ -7,7 +7,7 @@
       <h3>Available Topics</h3>
     </div>
     <mat-list role="list">
-      @for (topic of device.topics; track topic.name) {
+      @for (topic of availableTopics(); track topic.name) {
       <mat-list-item
         role="listitem"
         (click)="selectTopic(topic)"
@@ -18,7 +18,7 @@
         <div class="topic-info">
           <span class="topic-name">{{ topic.name }}</span>
           <mat-chip-set>
-            <mat-chip [ngClass]="'chip-' + topic.type">{{
+            <mat-chip [class]="'chip-' + topic.type">{{
               topic.type
             }}</mat-chip>
           </mat-chip-set>
@@ -43,7 +43,11 @@
         <span class="timestamp"
           >{{ msg.timestamp | date : "HH:mm:ss.SSS" }}</span
         >
-        <pre class="payload">{{ msg.payload | prettyJson }}</pre>
+        <pre class="payload">@if (isSelectedTopicWildcard()) {
+            {{ msg.topic }}: {{ msg.payload | prettyJson }}
+          } @else {
+            {{ msg.payload | prettyJson }}
+          }</pre>
       </div>
       } @empty {
       <div class="empty-state">

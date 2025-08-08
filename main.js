@@ -2,48 +2,40 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const url = require('url');
 const mqtt = require('mqtt');
-const fs = require('fs'); // fs modülünü ekle
+const fs = require('fs');
 
 let win;
 let client;
-const credentialsPath = path.join(app.getPath('userData'), 'credentials.json'); // Kimlik bilgileri dosya yolu
+const userDataPath = app.getPath('userData');
+const credentialsPath = path.join(userDataPath, 'credentials.json');
+const topicsPath = path.join(userDataPath, 'topics.json'); // Topic'ler için dosya yolu
 
 function createWindow() {
   win = new BrowserWindow({
     width: 1920,
     height: 1080,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'), // preload betiğini ekleyin
-      nodeIntegration: false, // güvenlik için false olmalı
-      contextIsolation: true, // güvenlik için true olmalı
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
     }
   });
 
   const startUrl = process.env.ELECTRON_START_URL || url.format({
-    // --- BU SATIRIN DOĞRU OLDUĞUNDAN EMİN OLUN ---
-    pathname: path.join(__dirname, 'dist/myapp/browser/index.html'), 
+    pathname: path.join(__dirname, 'dist/myapp/browser/index.html'),
     protocol: 'file:',
     slashes: true
   });
 
   win.loadURL(startUrl);
-
-  win.webContents.openDevTools(); // Hata ayıklama için açık kalsın
+  win.webContents.openDevTools();
 
   win.on('closed', () => {
     win = null;
   });
 }
 
-app.on('ready', () => {
-  createWindow();
-  // Uygulama hazır olduğunda kimlik bilgilerini yükle ve Angular'a gönder
-  loadCredentials().then(credentials => {
-    if (credentials && win) {
-      win.webContents.send('load-credentials-success', credentials);
-    }
-  });
-});
+app.on('ready', createWindow);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -57,75 +49,65 @@ app.on('activate', () => {
   }
 });
 
-// Kimlik bilgilerini yükleme fonksiyonu
-async function loadCredentials() {
+// --- Dosya Sistemi Fonksiyonları ---
+
+async function loadFromFile(filePath) {
   try {
-    if (fs.existsSync(credentialsPath)) {
-      const data = await fs.promises.readFile(credentialsPath, 'utf8');
+    if (fs.existsSync(filePath)) {
+      const data = await fs.promises.readFile(filePath, 'utf8');
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('Kimlik bilgileri yüklenirken hata oluştu:', error);
+    console.error(`Dosya okunurken hata oluştu (${path.basename(filePath)}):`, error);
   }
   return null;
 }
 
-// Kimlik bilgilerini kaydetme fonksiyonu
-async function saveCredentials(credentials) {
+async function saveToFile(filePath, data) {
   try {
-    await fs.promises.writeFile(credentialsPath, JSON.stringify(credentials), 'utf8');
-    console.log('Kimlik bilgileri başarıyla kaydedildi.');
+    await fs.promises.writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
+    console.log(`Veri başarıyla kaydedildi: ${path.basename(filePath)}`);
   } catch (error) {
-    console.error('Kimlik bilgileri kaydedilirken hata oluştu:', error);
+    console.error(`Dosya yazılırken hata oluştu (${path.basename(filePath)}):`, error);
   }
 }
 
 // --- IPC Mantığı ---
 
-// Kimlik bilgilerini yükleme isteği
-ipcMain.handle('load-credentials', async () => {
-  return await loadCredentials();
-});
+// Kimlik Bilgileri
+ipcMain.handle('load-credentials', () => loadFromFile(credentialsPath));
+ipcMain.on('save-credentials', (event, credentials) => saveToFile(credentialsPath, credentials));
 
-// Kimlik bilgilerini kaydetme isteği
-ipcMain.on('save-credentials', (event, credentials) => {
-  saveCredentials(credentials);
-});
+// Topic'ler
+ipcMain.handle('load-topics', () => loadFromFile(topicsPath));
+ipcMain.on('save-topics', (event, topics) => saveToFile(topicsPath, topics));
+
 
 // --- MQTT ve IPC Mantığı ---
 
-// MQTT Broker'a bağlanma isteği
 ipcMain.handle('mqtt-connect', async (event, options) => {
-  const { password, ...optionsWithoutPassword } = options; // Şifreyi loglamadan çıkar
+  const { password, ...optionsWithoutPassword } = options;
   console.log('Bağlantı isteği alındı:', optionsWithoutPassword);
   try {
     const protocol = options.protocol || 'ws';
     const brokerUrl = `${protocol}://${options.host}:${options.port}`;
-    // Otomatik yeniden bağlanmayı devre dışı bırak
-    const connectOptions = {
-      ...options,
-      reconnectPeriod: 0, 
-      clean: true
-    };
+    const connectOptions = { ...options, reconnectPeriod: 0, clean: true };
     client = mqtt.connect(brokerUrl, connectOptions);
 
     client.on('connect', () => {
       console.log("MQTT Broker'a başarıyla bağlanıldı!");
-      console.log("'mqtt-status: connected' mesajı Angular'a gönderiliyor...");
       win.webContents.send('mqtt-status', { status: 'connected' });
     });
 
     client.on('message', (topic, message) => {
-      // Gelen mesajı Angular tarafına gönder
+      console.log(`[Main Process] MQTT Message Received: Topic=${topic}, Payload=${message.toString()}`); // Log eklendi
       win.webContents.send('mqtt-message', { topic, message: message.toString() });
     });
 
     client.on('error', (error) => {
       console.error('MQTT Hatası:', error);
       win.webContents.send('mqtt-status', { status: 'error', error: error.message });
-      if (client) {
-        client.end(true); // Hata durumunda bağlantıyı zorla kapat
-      }
+      if (client) client.end(true);
     });
 
     client.on('close', () => {
@@ -140,35 +122,31 @@ ipcMain.handle('mqtt-connect', async (event, options) => {
   }
 });
 
-// Topic'e abone olma isteği
 ipcMain.on('mqtt-subscribe', (event, { topic, options }) => {
   if (client && client.connected) {
-    client.subscribe(topic, options, (err) => {
+    const subOptions = options || { qos: 2 };
+    client.subscribe(topic, subOptions, (err) => {
       if (err) {
         console.error(`Abone olma hatası (${topic}):`, err);
       } else {
-        console.log(`Başarıyla abone olundu: ${topic} (QoS: ${options.qos})`);
+        console.log(`Başarıyla abone olundu: ${topic} (QoS: ${subOptions.qos})`);
       }
     });
   }
 });
 
-// Mesaj yayınlama isteği
 ipcMain.on('mqtt-publish', (event, { topic, message, options }) => {
   if (client && client.connected) {
     client.publish(topic, message, options, (err) => {
-      if (err) {
-        console.error(`Yayınlama hatası (${topic}):`, err);
-      }
+      if (err) console.error(`Yayınlama hatası (${topic}):`, err);
     });
   }
 });
 
-// Topic'ten aboneliği kaldırma isteği
 ipcMain.on('mqtt-unsubscribe', (event, topic) => {
-  if (client && client.connected) {
+  if (client && client.connected && !client.disconnecting) {
     client.unsubscribe(topic, (err) => {
-      if (err) {
+      if (err && !client.disconnecting) {
         console.error(`Abonelikten çıkma hatası (${topic}):`, err);
       } else {
         console.log(`Başarıyla abonelikten çıkıldı: ${topic}`);
@@ -177,7 +155,6 @@ ipcMain.on('mqtt-unsubscribe', (event, topic) => {
   }
 });
 
-// Bağlantıyı kesme isteği
 ipcMain.on('mqtt-disconnect', () => {
   if (client) {
     client.end();

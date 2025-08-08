@@ -19,8 +19,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 import { DeviceStateService } from '../../../../core/services/device-state.service';
 import { MqttService } from '../../../../core/services/mqtt.service';
-import { MqttTopic } from '../../../../core/services/mqtt-topic.service';
+import { MqttTopic, MqttTopicService } from '../../../../core/services/mqtt-topic.service';
 import { PrettyJsonPipe } from '../../../../shared/pipes/json.pipe';
+import { AuthService } from '../../../../core/services/auth.service';
 
 // Define the message structure used within this component
 export interface MonitoredMessage {
@@ -49,11 +50,31 @@ export interface MonitoredMessage {
 export class TopicMonitorComponent {
   private readonly deviceStateService = inject(DeviceStateService);
   private readonly mqttService = inject(MqttService);
+  private readonly mqttTopicService = inject(MqttTopicService);
+  private readonly authService = inject(AuthService);
 
   public readonly selectedDevice = toSignal(
     this.deviceStateService.selectedDevice$
   );
   public readonly selectedTopic = signal<MqttTopic | null>(null);
+
+  // MqttTopicService'ten gelen tüm topic şablonlarını doğrudan sinyale dönüştür
+  private readonly allTopicTemplates = toSignal(this.mqttTopicService.topics$, { initialValue: [] });
+
+  // availableTopics artık bir computed sinyal
+  public readonly availableTopics = computed<MqttTopic[]>(() => {
+    const device = this.selectedDevice();
+    const tenant = this.authService.tenant();
+    // allTopicTemplates sinyalini burada kullanıyoruz
+    const currentTopicTemplates = this.allTopicTemplates(); 
+
+    if (device && tenant) {
+      // Sadece seçilen cihaza ve tenant'a özel topic'leri oluştur
+      return this.mqttTopicService.generateTopicsForDevice(device.serialNo, tenant);
+    } else {
+      return [];
+    }
+  });
 
   @ViewChild('messageContainer') private messageContainer!: ElementRef;
 
@@ -78,25 +99,75 @@ export class TopicMonitorComponent {
     if (!topic) {
       return [];
     }
-    return messages.filter(msg => msg.topic === topic.name);
+
+    // Wildcard topic eşleşmesi için yardımcı fonksiyon
+    const matchesWildcard = (messageTopic: string, subscribedTopic: string): boolean => {
+      if (subscribedTopic === '#') {
+        return true; // Her şeyi eşleştir
+      }
+
+      const subParts = subscribedTopic.split('/');
+      const msgParts = messageTopic.split('/');
+
+      if (subParts.length > msgParts.length && subscribedTopic.indexOf('#') === -1) {
+        return false; // Abone olunan topic mesaj topic'inden uzunsa ve # içermiyorsa eşleşmez
+      }
+
+      for (let i = 0; i < subParts.length; i++) {
+        const subPart = subParts[i];
+        const msgPart = msgParts[i];
+
+        if (subPart === '#') {
+          return true; // # varsa geri kalan her şeyi eşleştir
+        }
+        if (subPart === '+') {
+          if (msgPart === undefined) return false; // + varsa mesajda karşılığı olmalı
+          continue; // Sonraki parçaya geç
+        }
+        if (subPart !== msgPart) {
+          return false; // Parçalar eşleşmiyorsa
+        }
+      }
+      return subParts.length === msgParts.length; // Tam eşleşme veya # ile bitiyorsa
+    };
+
+    // Eğer seçilen topic bir wildcard ise, ona göre filtrele
+    if (topic.name.includes('#') || topic.name.includes('+')) {
+      return messages.filter(msg => matchesWildcard(msg.topic, topic.name));
+    } else {
+      // Değilse, tam eşleşme yap
+      return messages.filter(msg => msg.topic === topic.name);
+    }
+  });
+
+  public readonly isSelectedTopicWildcard = computed(() => {
+    const topic = this.selectedTopic();
+    return topic ? (topic.name.includes('#') || topic.name.includes('+')) : false;
   });
 
   constructor() {
-    // Reset topic selection when device changes
-    effect(() => {
-      this.selectedDevice();
-      this.selectedTopic.set(null);
+    // Abonelikleri yöneten effect
+    effect(onCleanup => {
+      const topicsToSubscribe = this.availableTopics().map(t => t.name); // availableTopics değiştiğinde tetiklenecek
+
+      // Önceki tüm aboneliklerden çık
+      this.mqttService.unsubscribeAllTopics();
+
+      // Yeni topic'lere abone ol
+      if (topicsToSubscribe.length > 0) {
+        this.mqttService.subscribeToTopics(topicsToSubscribe);
+      }
+
+      // Effect temizlendiğinde abonelikleri kaldır
+      onCleanup(() => {
+        this.mqttService.unsubscribeAllTopics();
+      });
     });
 
-    // Manage MQTT subscriptions based on the selected topic
-    effect(onCleanup => {
-      const topic = this.selectedTopic();
-      if (topic) {
-        this.mqttService.subscribeToTopic(topic.name);
-        onCleanup(() => {
-          this.mqttService.unsubscribeFromTopic(topic.name);
-        });
-      }
+    // selectedDevice değiştiğinde selectedTopic'i sıfırla
+    effect(() => {
+      this.selectedDevice(); // selectedDevice değiştiğinde bu effect tetiklenir
+      this.selectedTopic.set(null);
     });
 
     // Scroll to the bottom when new messages arrive
@@ -104,6 +175,11 @@ export class TopicMonitorComponent {
       if (this.topicMessages() && this.messageContainer) {
         this.scrollToBottom();
       }
+    });
+
+    // Temporary log for allMessages to debug
+    effect(() => {
+      console.log('[TopicMonitorComponent] All messages:', this.allMessages());
     });
   }
 
@@ -119,9 +195,4 @@ export class TopicMonitorComponent {
       }, 50);
     } catch (err) {}
   }
-
-  // Not needed when tracking by property in the template
-  // public trackByTopic(index: number, topic: MqttTopic): string {
-  //   return topic.name;
-  // }
 }
